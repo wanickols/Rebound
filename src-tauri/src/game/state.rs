@@ -52,7 +52,7 @@ impl State {
             h: 20.0,
             is_static: false,
             friction: 0.05,
-            restitution: 0.9,
+            restitution: 0.5,
             kind: "player".to_string(),
         }
     }

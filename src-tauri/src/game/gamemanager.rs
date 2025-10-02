@@ -117,7 +117,7 @@ impl GameManager {
             self.input.left,
             self.input.right,
         );
-        let dt: f32 = 1.0 / 60.0; // ~0.016
+        let dt: f32 = 1.0 / 120.0; // ~0.016
         Physics::update(&mut self.states, dt);
     }
 }

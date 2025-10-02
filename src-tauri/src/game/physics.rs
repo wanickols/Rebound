@@ -5,8 +5,8 @@ pub struct Physics;
 impl Physics {
     pub fn apply_input(state: &mut State, up: bool, down: bool, left: bool, right: bool) {
         // acceleration constants
-        let accel = 40.0;
-        let max_speed = 400.0;
+        let accel = 50.0;
+        let max_speed = 200.0;
 
         // input direction
         let mut ax = 0.0;
@@ -75,17 +75,62 @@ impl Physics {
             (&mut right[0], &mut left[j])
         };
 
-        // now you can safely use a and b mutably
-        if b.is_static {
-            if a.vx != 0.0 {
-                a.vx = -a.vx * a.restitution;
+        // Compute overlap
+        let ax_center = a.x + a.w / 2.0;
+        let ay_center = a.y + a.h / 2.0;
+        let bx_center = b.x + b.w / 2.0;
+        let by_center = b.y + b.h / 2.0;
+
+        let dx = bx_center - ax_center;
+        let dy = by_center - ay_center;
+
+        let combined_half_width = (a.w + b.w) / 2.0;
+        let combined_half_height = (a.h + b.h) / 2.0;
+
+        let overlap_x = combined_half_width - dx.abs();
+        let overlap_y = combined_half_height - dy.abs();
+
+        // Determine collision axis
+        if overlap_x < overlap_y {
+            // Horizontal collision → flip vx
+            a.vx = -a.vx * a.restitution;
+            if !b.is_static {
+                b.vx = -b.vx * b.restitution;
             }
-            if a.vy != 0.0 {
-                a.vy = -a.vy * a.restitution;
+
+            // Separate objects
+            let push = overlap_x;
+            if dx > 0.0 {
+                a.x -= push;
+                if !b.is_static {
+                    b.x += push;
+                }
+            } else {
+                a.x += push;
+                if !b.is_static {
+                    b.x -= push;
+                }
             }
         } else {
-            std::mem::swap(&mut a.vx, &mut b.vx);
-            std::mem::swap(&mut a.vy, &mut b.vy);
+            // Vertical collision → flip vy
+            a.vy = -a.vy * a.restitution;
+            if !b.is_static {
+                b.vy = -b.vy * b.restitution;
+            }
+
+            // Separate objects
+            let push = overlap_y;
+            if dy > 0.0 {
+                a.y -= push;
+                if !b.is_static {
+                    b.y += push;
+                }
+            } else {
+                a.y += push;
+                if !b.is_static {
+                    b.y -= push;
+                }
+            }
         }
     }
 }
