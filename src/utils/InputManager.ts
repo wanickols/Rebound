@@ -1,57 +1,43 @@
 import { invoke } from "@tauri-apps/api/core";
 
+export type GameAction = "up" | "down" | "left" | "right" | "action";
+
+// Map keys / buttons to actions
+const keyMap: Record<string, GameAction> = {
+  w: "up",
+  W: "up",
+  ArrowUp: "up",
+  s: "down",
+  ArrowDown: "down",
+  a: "left",
+  ArrowLeft: "left",
+  d: "right",
+  ArrowRight: "right",
+  " ": "action",
+};
+
+// Central input manager
 export class InputManager {
-  private state = {
-    up: false,
-    down: false,
-    left: false,
-    right: false,
-    action: false,
-  };
-
   constructor() {
-    window.addEventListener("keydown", (e) => this.onKey(e, true));
-    window.addEventListener("keyup", (e) => this.onKey(e, false));
+    window.addEventListener("keydown", (e) => this.handleKey(e.key, true));
+    window.addEventListener("keyup", (e) => this.handleKey(e.key, false));
   }
 
-  private onKey(e: KeyboardEvent, pressed: boolean) {
-    let triggered = false;
+  // Called from keydown/keyup
+  handleKey(key: string, pressed: boolean) {
+    const action = keyMap[key];
+    if (!action) return;
 
-    switch (e.key) {
-      case "ArrowUp":
-        triggered = this.state.up !== pressed;
-        this.state.up = pressed;
-        break;
-      case "ArrowDown":
-        triggered = this.state.down !== pressed;
-        this.state.down = pressed;
-        break;
-      case "ArrowLeft":
-        triggered = this.state.left !== pressed;
-        this.state.left = pressed;
-        break;
-      case "ArrowRight":
-        triggered = this.state.right !== pressed;
-        this.state.right = pressed;
-        break;
-      case " ":
-        triggered = this.state.action !== pressed;
-        this.state.action = pressed;
-        break;
-    }
-
-    if (triggered) {
-      this.callServer(e.key, pressed);
-    }
+    // Only trigger if state actually changes
+    this.sendActionToServer(0, action, pressed);
   }
 
-  callServer(key: string, pressed: boolean) {
-    invoke("input_event", { key, pressed })
-      .then(() => console.log(`Sent ${key}: ${pressed}`))
-      .catch((err) => console.error(err));
-  }
-
-  getState() {
-    return { ...this.state };
+  private sendActionToServer(
+    id: number, // TS camelCase
+    action: GameAction,
+    pressed: boolean
+  ) {
+    console.log("Sending action:", action, pressed);
+    invoke("input_event", { id, action, pressed }); // map key
   }
 }

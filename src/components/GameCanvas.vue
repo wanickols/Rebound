@@ -36,7 +36,6 @@ onMounted(async () => {
 
   // optional debug loop for input
   function loop() {
-    console.log(inputManager.getState());
     requestAnimationFrame(loop);
   }
   loop();

@@ -1,12 +1,14 @@
-use crate::game::input::InputState;
+use crate::game::input::{GameAction, GameActionEvent};
 use crate::game::physics::Physics;
+use crate::game::playerid::PlayerId;
 use crate::game::state::State;
+use std::collections::HashMap;
 
 use tauri::AppHandle;
 
 pub struct GameManager {
     pub states: Vec<State>,
-    pub input: InputState,
+    pending_inputs: HashMap<PlayerId, Vec<GameActionEvent>>,
     pub app: AppHandle,
     pub width: f32,
     pub height: f32,
@@ -19,12 +21,7 @@ impl GameManager {
         let mut gm = Self {
             app: app.clone(),
             states: vec![_player], // also keep it in the states list
-            input: InputState {
-                up: false,
-                down: false,
-                left: false,
-                right: false,
-            },
+            pending_inputs: HashMap::new(),
             width,
             height,
         };
@@ -38,70 +35,31 @@ impl GameManager {
         let thickness = 10.0; // wall thickness
 
         // Top wall
-        self.states.push(State {
-            x: 0.0,
-            y: -thickness,
-            w: self.width,
-            h: thickness,
-            vx: 0.0,
-            vy: 0.0,
-            is_static: true,
-            friction: 0.0,
-            restitution: 1.0,
-            kind: "wall".to_string(),
-        });
+        self.states
+            .push(State::new_wall(0.0, -thickness, self.width, thickness));
 
         // Bottom wall
-        self.states.push(State {
-            x: 0.0,
-            y: self.height,
-            w: self.width,
-            h: thickness,
-            vx: 0.0,
-            vy: 0.0,
-            is_static: true,
-            friction: 0.0,
-            restitution: 1.0,
-            kind: "wall".to_string(),
-        });
+        self.states
+            .push(State::new_wall(0.0, self.height, self.width, thickness));
 
         // Left wall
-        self.states.push(State {
-            x: -thickness,
-            y: 0.0,
-            w: thickness,
-            h: self.height,
-            vx: 0.0,
-            vy: 0.0,
-            is_static: true,
-            friction: 0.0,
-            restitution: 1.0,
-            kind: "wall".to_string(),
-        });
+        self.states
+            .push(State::new_wall(-thickness, 0.0, thickness, self.height));
 
         // Right wall
-        self.states.push(State {
-            x: self.width,
-            y: 0.0,
-            w: thickness,
-            h: self.height,
-            vx: 0.0,
-            vy: 0.0,
-            is_static: true,
-            friction: 0.0,
-            restitution: 1.0,
-            kind: "wall".to_string(),
-        });
+        self.states
+            .push(State::new_wall(self.width, 0.0, thickness, self.height));
     }
 
-    pub fn set_input(&mut self, key: &str, pressed: bool) {
-        match key {
-            "ArrowUp" => self.input.up = pressed,
-            "ArrowDown" => self.input.down = pressed,
-            "ArrowLeft" => self.input.left = pressed,
-            "ArrowRight" => self.input.right = pressed,
-            _ => {}
-        }
+    pub fn set_input(&mut self, player: PlayerId, action: GameAction, pressed: bool) {
+        self.pending_inputs
+            .entry(player)
+            .or_default()
+            .push(GameActionEvent {
+                action,
+                pressed,
+                timestamp: 0,
+            });
     }
 
     pub fn add_state(&mut self, state: State) {
@@ -110,13 +68,24 @@ impl GameManager {
 
     pub fn update(&mut self) {
         //Apply physics
-        Physics::apply_input(
-            &mut self.states[0],
-            self.input.up,
-            self.input.down,
-            self.input.left,
-            self.input.right,
-        );
+        for (&player_id, events) in &self.pending_inputs {
+            if let Some(state) = self
+                .states
+                .iter_mut()
+                .find(|s| s.player_id == Some(player_id))
+            {
+                for event in events {
+                    match event.action {
+                        GameAction::Up => state.input.up = event.pressed,
+                        GameAction::Down => state.input.down = event.pressed,
+                        GameAction::Left => state.input.left = event.pressed,
+                        GameAction::Right => state.input.right = event.pressed,
+                        GameAction::Action => state.input.action = event.pressed,
+                    }
+                }
+            }
+        }
+        self.pending_inputs.clear();
         let dt: f32 = 1.0 / 120.0; // ~0.016
         Physics::update(&mut self.states, dt);
     }

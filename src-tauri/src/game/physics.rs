@@ -3,7 +3,7 @@ use crate::game::state::State;
 pub struct Physics;
 
 impl Physics {
-    pub fn apply_input(state: &mut State, up: bool, down: bool, left: bool, right: bool) {
+    pub fn apply_input(state: &mut State) {
         // acceleration constants
         let accel = 50.0;
         let max_speed = 200.0;
@@ -12,16 +12,18 @@ impl Physics {
         let mut ax = 0.0;
         let mut ay = 0.0;
 
-        if up {
+        let input = &state.input;
+
+        if input.up {
             ay -= 1.0;
         }
-        if down {
+        if input.down {
             ay += 1.0;
         }
-        if left {
+        if input.left {
             ax -= 1.0;
         }
-        if right {
+        if input.right {
             ax += 1.0;
         }
 
@@ -39,6 +41,8 @@ impl Physics {
             if states[i].is_static {
                 continue;
             }
+
+            Physics::apply_input(&mut states[i]);
 
             states[i].apply_friction(dt);
             states[i].stop_if_tiny();

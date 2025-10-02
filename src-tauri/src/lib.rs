@@ -1,14 +1,21 @@
 mod game;
 
 use crate::game::gamemanager::GameManager;
+use crate::game::input::GameAction;
+use crate::game::playerid::PlayerId;
 use std::sync::{Arc, Mutex};
-
 use tauri::{Emitter, Manager};
 
 #[tauri::command]
-fn input_event(key: &str, pressed: bool, gm: tauri::State<Arc<Mutex<GameManager>>>) {
+fn input_event(
+    id: u32,
+    action: GameAction,
+    pressed: bool,
+    gm: tauri::State<Arc<Mutex<GameManager>>>,
+) {
+    let player_id = PlayerId(id);
     let mut gm = gm.lock().unwrap();
-    gm.set_input(key, pressed);
+    gm.set_input(player_id, action, pressed);
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
