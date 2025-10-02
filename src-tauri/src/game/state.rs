@@ -19,6 +19,7 @@ pub struct State {
     pub vy: f32,
     pub w: f32,
     pub h: f32,
+    pub mass: f32,
     pub is_static: bool,
     pub friction: f32,
     pub restitution: f32,
@@ -61,11 +62,12 @@ impl State {
             y,
             w,
             h,
+            mass: 1000.0,
             vx: 0.0,
             vy: 0.0,
             is_static: true,
             friction: 0.0,
-            restitution: 1.0,
+            restitution: 0.8,
             kind: "wall".to_string(),
             player_id: None,
             input: InputState {
@@ -86,11 +88,36 @@ impl State {
             vy: 0.0,
             w: 20.0, // arbitrary paddle/ball size for now
             h: 20.0,
+            mass: 100.0,
             is_static: false,
-            friction: 0.05,
-            restitution: 0.5,
+            friction: 0.1,
+            restitution: 0.6,
             kind: "player".to_string(),
             player_id: Some(PlayerId::new()),
+            input: InputState {
+                up: false,
+                down: false,
+                left: false,
+                right: false,
+                action: false,
+            },
+        }
+    }
+
+    pub fn new_ball(x: f32, y: f32) -> Self {
+        State {
+            x,
+            y,
+            vx: 0.0,
+            vy: 0.0,
+            w: 12.0, // smaller than player
+            h: 12.0,
+            mass: 1.0,
+            is_static: false,
+            friction: 0.01,
+            restitution: 0.9,
+            kind: "ball".to_string(),
+            player_id: None,
             input: InputState {
                 up: false,
                 down: false,

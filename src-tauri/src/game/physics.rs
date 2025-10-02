@@ -6,7 +6,7 @@ impl Physics {
     pub fn apply_input(state: &mut State) {
         // acceleration constants
         let accel = 50.0;
-        let max_speed = 200.0;
+        let max_speed = 400.0;
 
         // input direction
         let mut ax = 0.0;
@@ -79,7 +79,7 @@ impl Physics {
             (&mut right[0], &mut left[j])
         };
 
-        // Compute overlap
+        // Compute centers
         let ax_center = a.x + a.w / 2.0;
         let ay_center = a.y + a.h / 2.0;
         let bx_center = b.x + b.w / 2.0;
@@ -94,46 +94,51 @@ impl Physics {
         let overlap_x = combined_half_width - dx.abs();
         let overlap_y = combined_half_height - dy.abs();
 
-        // Determine collision axis
-        if overlap_x < overlap_y {
-            // Horizontal collision → flip vx
-            a.vx = -a.vx * a.restitution;
-            if !b.is_static {
-                b.vx = -b.vx * b.restitution;
+        if overlap_x > 0.0 && overlap_y > 0.0 {
+            // Pick axis of minimum penetration
+            let (nx, ny, overlap) = if overlap_x < overlap_y {
+                (dx.signum(), 0.0, overlap_x)
+            } else {
+                (0.0, dy.signum(), overlap_y)
+            };
+
+            // --- IMPULSE RESPONSE ---
+            let rvx = b.vx - a.vx;
+            let rvy = b.vy - a.vy;
+
+            let vel_along_normal = rvx * nx + rvy * ny;
+            if vel_along_normal > 0.0 {
+                return; // already separating
             }
 
-            // Separate objects
-            let push = overlap_x;
-            if dx > 0.0 {
-                a.x -= push;
-                if !b.is_static {
-                    b.x += push;
-                }
-            } else {
-                a.x += push;
-                if !b.is_static {
-                    b.x -= push;
-                }
+            let e = a.restitution.min(b.restitution); // bounciness
+            let inv_mass_a = if a.is_static { 0.0 } else { 1.0 / a.mass };
+            let inv_mass_b = if b.is_static { 0.0 } else { 1.0 / b.mass };
+
+            let j = -(1.0 + e) * vel_along_normal / (inv_mass_a + inv_mass_b);
+
+            let impulse_x = j * nx;
+            let impulse_y = j * ny;
+
+            if !a.is_static {
+                a.vx -= impulse_x * inv_mass_a;
+                a.vy -= impulse_y * inv_mass_a;
             }
-        } else {
-            // Vertical collision → flip vy
-            a.vy = -a.vy * a.restitution;
             if !b.is_static {
-                b.vy = -b.vy * b.restitution;
+                b.vx += impulse_x * inv_mass_b;
+                b.vy += impulse_y * inv_mass_b;
             }
 
-            // Separate objects
-            let push = overlap_y;
-            if dy > 0.0 {
-                a.y -= push;
-                if !b.is_static {
-                    b.y += push;
-                }
-            } else {
-                a.y += push;
-                if !b.is_static {
-                    b.y -= push;
-                }
+            // --- POSITION CORRECTION ---
+            let percent = 0.8; // tweak: how aggressively to separate
+            let correction = overlap / (inv_mass_a + inv_mass_b) * percent;
+            if !a.is_static {
+                a.x -= correction * nx * inv_mass_a;
+                a.y -= correction * ny * inv_mass_a;
+            }
+            if !b.is_static {
+                b.x += correction * nx * inv_mass_b;
+                b.y += correction * ny * inv_mass_b;
             }
         }
     }
