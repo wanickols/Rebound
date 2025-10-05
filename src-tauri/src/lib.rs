@@ -1,8 +1,9 @@
 mod game;
 
 use crate::game::gamemanager::GameManager;
-use crate::game::input::GameAction;
+use crate::game::input::{GameAction, InputValue};
 use crate::game::playerid::PlayerId;
+
 use std::sync::{Arc, Mutex};
 use tauri::{Emitter, Manager};
 
@@ -10,12 +11,12 @@ use tauri::{Emitter, Manager};
 fn input_event(
     id: u32,
     action: GameAction,
-    pressed: bool,
+    value: InputValue,
     gm: tauri::State<Arc<Mutex<GameManager>>>,
 ) {
     let player_id = PlayerId(id);
     let mut gm = gm.lock().unwrap();
-    gm.set_input(player_id, action, pressed);
+    gm.set_input(player_id, action, value);
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

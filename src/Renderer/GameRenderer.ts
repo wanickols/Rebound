@@ -1,5 +1,6 @@
 const GAME_WIDTH = 320;
 const GAME_HEIGHT = 180;
+import { spriteLibrary } from "./SpriteLibrary";
 
 export class GameRenderer {
   private ctx: CanvasRenderingContext2D;
@@ -26,9 +27,23 @@ export class GameRenderer {
     this.clear();
 
     for (const s of states) {
-      this.ctx.fillStyle = s.is_static ? "gray" : "lime";
+      this.draw(s, scale, offsetX, offsetY);
+    }
+  }
 
-      // Draw rectangle at (x, y) with width/height
+  draw(s: State, scale: number, offsetX: number, offsetY: number) {
+    const sprite = spriteLibrary[s.kind]; // <--- use s.kind to pick the image
+
+    if (sprite && sprite.complete) {
+      this.ctx.drawImage(
+        sprite,
+        s.x * scale + offsetX,
+        s.y * scale + offsetY,
+        s.w * scale,
+        s.h * scale
+      );
+    } else {
+      this.ctx.fillStyle = s.is_static ? "gray" : "lime";
       this.ctx.fillRect(
         s.x * scale + offsetX,
         s.y * scale + offsetY,

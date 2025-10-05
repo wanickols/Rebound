@@ -9,6 +9,8 @@ pub struct InputState {
     pub left: bool,
     pub right: bool,
     pub action: bool,
+    pub mouse_x: f32,
+    pub mouse_y: f32,
 }
 
 #[derive(Serialize, Clone)]
@@ -76,6 +78,8 @@ impl State {
                 left: false,
                 right: false,
                 action: false,
+                mouse_x: 0.0,
+                mouse_y: 0.0,
             },
         }
     }
@@ -100,6 +104,8 @@ impl State {
                 left: false,
                 right: false,
                 action: false,
+                mouse_x: 0.0,
+                mouse_y: 0.0,
             },
         }
     }
@@ -124,6 +130,8 @@ impl State {
                 left: false,
                 right: false,
                 action: false,
+                mouse_x: 0.0,
+                mouse_y: 0.0,
             },
         }
     }

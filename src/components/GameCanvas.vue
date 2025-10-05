@@ -34,11 +34,12 @@ onMounted(async () => {
     renderer.updateState(event.payload);
   });
 
-  // optional debug loop for input
-  function loop() {
-    requestAnimationFrame(loop);
+  function gameLoop() {
+    const now = performance.now();
+    inputManager.update(now);
+    requestAnimationFrame(gameLoop);
   }
-  loop();
+  gameLoop();
 });
 
 onBeforeUnmount(() => {
@@ -61,10 +62,18 @@ function resizeCanvas() {
   canvas.value.style.width = `${GAME_WIDTH * scale}px`;
   canvas.value.style.height = `${GAME_HEIGHT * scale}px`;
 }
+
+function onMouseMove(e: MouseEvent) {
+  if (!canvas.value) return;
+  const rect = canvas.value.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  inputManager.handleMouseMove(x, y);
+}
 </script>
 
 <template>
-  <canvas ref="canvas" tabindex="0"></canvas>
+  <canvas @mousemove="onMouseMove" ref="canvas" tabindex="0"></canvas>
 </template>
 
 <style scoped>

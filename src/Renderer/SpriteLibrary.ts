@@ -1,18 +1,21 @@
-const spriteLibrary: Record<string, HTMLImageElement> = {};
+export const spriteLibrary: Record<string, HTMLImageElement> = {};
+import playerImg from "@/assets/sprites/player.png";
+import ballImg from "@/assets/sprites/ball.png";
+import wallImg from "@/assets/sprites/block.png";
 
-// preload images
-function loadSprites() {
-  const assets: Record<string, string> = {
-    player: "/sprites/player.png",
-    ball: "/sprites/ball.png",
-    wall: "/sprites/wall.png",
-  };
+export function loadSprites() {
+  spriteLibrary["player"] = new Image();
+  spriteLibrary["player"].src = playerImg;
+  spriteLibrary["player"].onload = () => console.log("player loaded");
 
-  for (const [kind, path] of Object.entries(assets)) {
-    const img = new Image();
-    img.src = path;
-    spriteLibrary[kind] = img;
-  }
+  spriteLibrary["ball"] = new Image();
+  spriteLibrary["ball"].src = ballImg;
+  spriteLibrary["ball"].onload = () => console.log("ball loaded");
+
+  spriteLibrary["wall"] = new Image();
+  spriteLibrary["wall"].src = wallImg;
+  spriteLibrary["wall"].onload = () => console.log("wall loaded");
 }
 
+// optional: auto-load immediately
 loadSprites();

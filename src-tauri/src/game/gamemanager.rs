@@ -1,4 +1,4 @@
-use crate::game::input::{GameAction, GameActionEvent};
+use crate::game::input::{GameAction, GameActionEvent, InputValue};
 use crate::game::physics::Physics;
 use crate::game::playerid::PlayerId;
 use crate::game::state::State;
@@ -53,13 +53,13 @@ impl GameManager {
             .push(State::new_wall(self.width, 0.0, thickness, self.height));
     }
 
-    pub fn set_input(&mut self, player: PlayerId, action: GameAction, pressed: bool) {
+    pub fn set_input(&mut self, player: PlayerId, action: GameAction, value: InputValue) {
         self.pending_inputs
             .entry(player)
             .or_default()
             .push(GameActionEvent {
                 action,
-                pressed,
+                value,
                 timestamp: 0,
             });
     }
@@ -78,11 +78,16 @@ impl GameManager {
             {
                 for event in events {
                     match event.action {
-                        GameAction::Up => state.input.up = event.pressed,
-                        GameAction::Down => state.input.down = event.pressed,
-                        GameAction::Left => state.input.left = event.pressed,
-                        GameAction::Right => state.input.right = event.pressed,
-                        GameAction::Action => state.input.action = event.pressed,
+                        GameAction::Up => state.input.up = event.value.as_bool(),
+                        GameAction::Down => state.input.down = event.value.as_bool(),
+                        GameAction::Left => state.input.left = event.value.as_bool(),
+                        GameAction::Right => state.input.right = event.value.as_bool(),
+                        GameAction::Action => state.input.action = event.value.as_bool(),
+                        GameAction::MouseMove => {
+                            let (x, y) = event.value.as_vec2();
+                            state.input.mouse_x = x;
+                            state.input.mouse_y = y;
+                        }
                     }
                 }
             }

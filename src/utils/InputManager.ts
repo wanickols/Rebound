@@ -1,6 +1,18 @@
 import { invoke } from "@tauri-apps/api/core";
 
-export type GameAction = "up" | "down" | "left" | "right" | "action";
+export type GameAction =
+  | "up"
+  | "down"
+  | "left"
+  | "right"
+  | "action"
+  | "mouseMove";
+
+type InputValue =
+  | { Bool: boolean }
+  | { Vec2: { x: number; y: number } }
+  | { Float: number }
+  | { None: Record<string, never> };
 
 // Map keys / buttons to actions
 const keyMap: Record<string, GameAction> = {
@@ -18,6 +30,10 @@ const keyMap: Record<string, GameAction> = {
 
 // Central input manager
 export class InputManager {
+  private lastMouse = { x: 0, y: 0 };
+  private lastSent = 0;
+  private sendInterval = 1000 / 30; // 30Hz update rate
+
   constructor() {
     window.addEventListener("keydown", (e) => this.handleKey(e.key, true));
     window.addEventListener("keyup", (e) => this.handleKey(e.key, false));
@@ -29,15 +45,31 @@ export class InputManager {
     if (!action) return;
 
     // Only trigger if state actually changes
-    this.sendActionToServer(0, action, pressed);
+    this.sendActionToServer(0, action, {
+      Bool: pressed,
+    });
   }
 
-  private sendActionToServer(
-    id: number, // TS camelCase
-    action: GameAction,
-    pressed: boolean
-  ) {
-    console.log("Sending action:", action, pressed);
-    invoke("input_event", { id, action, pressed }); // map key
+  handleMouseMove(x: number, y: number) {
+    this.lastMouse = { x, y };
+  }
+
+  update(now: number) {
+    if (now - this.lastSent >= this.sendInterval) {
+      this.lastSent = now;
+      this.sendMouseToServer();
+    }
+  }
+
+  sendMouseToServer() {
+    this.sendActionToServer(0, "mouseMove", {
+      Vec2: { x: this.lastMouse.x, y: this.lastMouse.y },
+    });
+  }
+
+  sendActionToServer(id: number, action: string, value: InputValue) {
+    {
+      invoke("input_event", { id, action, value }); // map key
+    }
   }
 }
