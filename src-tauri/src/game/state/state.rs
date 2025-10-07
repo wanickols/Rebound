@@ -30,7 +30,7 @@ impl InputState {
     }
 }
 
-#[derive(Serialize, Copy, Clone)]
+#[derive(Serialize, Copy, Clone, Debug)]
 pub enum Kind {
     Player,
     Brick,
@@ -137,12 +137,13 @@ impl State {
 
     fn handle_trigger_collision(&self, other: &State, events: &mut EventQueue) {
         match (self.kind, other.kind) {
-            (Kind::Ball, Kind::Goal) => self.trigger_score(events),
+            (Kind::Goal, Kind::Ball) => self.trigger_score(events),
             _ => {}
         }
     }
 
     fn trigger_score(&self, events: &mut EventQueue) {
+        println!("Trigggered");
         events.push(GameEvent::GoalScored {
             team_id: self.team_id.expect("Goal state must have a team_id"),
         });
@@ -215,6 +216,10 @@ impl State {
         s.y = y;
         s.w = w;
         s.h = h;
+        s.kind = Kind::Goal;
+        s.is_trigger = true;
+        s.is_static = true;
+
         s.team_id = Some(team_id);
         s
     }

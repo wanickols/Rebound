@@ -4,5 +4,6 @@ pub mod gamepayload;
 pub mod input;
 pub mod physics;
 pub mod scoremanager;
+pub mod spawnmanager;
 pub mod state;
 pub mod util;

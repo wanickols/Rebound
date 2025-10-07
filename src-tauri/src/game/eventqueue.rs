@@ -2,7 +2,6 @@
 pub enum GameEvent {
     GoalScored { team_id: u8 },
     ResetScore,
-    BallReset,
 }
 
 #[derive(Default)]

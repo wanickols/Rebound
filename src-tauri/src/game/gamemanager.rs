@@ -2,6 +2,7 @@ use crate::game::eventqueue::{EventQueue, GameEvent};
 use crate::game::input::{GameAction, GameActionEvent, InputValue};
 use crate::game::physics::Physics;
 use crate::game::scoremanager::{ScoreManager, Team};
+use crate::game::spawnmanager::SpawnManager;
 use crate::game::state::{playerid::PlayerId, state::State};
 use std::collections::HashMap;
 
@@ -16,12 +17,11 @@ pub struct GameManager {
     pub height: f32,
     pub event_queue: EventQueue,
     pub score_manager: ScoreManager,
+    pub spawn_manager: SpawnManager,
 }
 
 impl GameManager {
     pub fn new(app: &AppHandle, width: f32, height: f32) -> Self {
-        let _player = State::new_player(0.0, 0.0);
-
         let score_manager = ScoreManager::new(
             Team {
                 id: 0,
@@ -39,13 +39,16 @@ impl GameManager {
 
         let mut gm = Self {
             app: app.clone(),
-            states: vec![_player], // also keep it in the states list
+            states: vec![], // also keep it in the states list
             pending_inputs: HashMap::new(),
             width,
             height,
             event_queue: EventQueue::new(),
             score_manager: score_manager,
+            spawn_manager: SpawnManager::new(),
         };
+
+        gm.spawn_manager.spawn_states(&mut gm.states);
 
         gm.create_borders();
 
@@ -55,8 +58,8 @@ impl GameManager {
     fn create_borders(&mut self) {
         let thickness = 10.0; // wall thickness
 
-        self.states.push(State::new_ball(100.0, 50.0));
-        self.states.push(State::new_player(200.0, 50.0));
+        self.states.push(State::new_goal(0.0, 50.0, 40.0, 100.0, 0));
+
         // Top wall
         self.states
             .push(State::new_wall(0.0, -thickness, self.width, thickness));
@@ -95,11 +98,12 @@ impl GameManager {
             match event {
                 GameEvent::GoalScored { team_id } => {
                     self.score_manager.add_point(team_id);
+                    self.spawn_manager.reset_states(&mut self.states);
+                    self.score_manager.enable_score();
                 }
                 GameEvent::ResetScore => {
                     self.score_manager.reset();
                 }
-                GameEvent::BallReset => { /* ... */ }
             }
         }
 
