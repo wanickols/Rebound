@@ -1,6 +1,7 @@
 mod game;
 
 use crate::game::gamemanager::GameManager;
+use crate::game::gamepayload::GamePayload;
 use crate::game::input::{GameAction, InputValue};
 use crate::game::state::playerid::PlayerId;
 
@@ -51,7 +52,10 @@ fn start_game_loop(gm: Arc<Mutex<GameManager>>) {
                 let mut gm = gm.lock().unwrap();
                 gm.update(); // apply input & physics + emit state
 
-                gm.app.emit("game-state", gm.states.clone()).unwrap();
+                let payload = GamePayload::from(&*gm);
+                if let Err(err) = gm.app.emit("game-state", payload) {
+                    eprintln!("Failed to emit game-state: {}", err);
+                }
             }
 
             // sleep the remainder of the tick

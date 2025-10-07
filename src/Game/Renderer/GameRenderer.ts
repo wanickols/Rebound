@@ -1,7 +1,7 @@
 const GAME_WIDTH = 320;
 const GAME_HEIGHT = 180;
 import { spriteLibrary } from "./SpriteLibrary";
-import { State } from "./State";
+import { State } from "../State";
 
 export class GameRenderer {
   private ctx: CanvasRenderingContext2D;

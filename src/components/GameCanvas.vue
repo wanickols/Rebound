@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from "vue";
 import { InputManager } from "@/utils/InputManager";
-import { GameRenderer } from "@/Renderer/GameRenderer";
+import { GameRenderer } from "@/Game/Renderer/GameRenderer";
 import { listen } from "@tauri-apps/api/event";
+import { GamePayload } from "@/Game/GamePayload";
 
 const canvas = ref<HTMLCanvasElement | null>(null);
 const inputManager = new InputManager();
@@ -30,8 +31,9 @@ onMounted(async () => {
   );
 
   // listen for backend state updates
-  await listen<State[]>("game-state", (event) => {
-    renderer.updateState(event.payload);
+  await listen<GamePayload>("game-state", (event) => {
+    const payload = GamePayload.from(event.payload);
+    renderer.updateState(payload.states);
   });
 
   function gameLoop() {

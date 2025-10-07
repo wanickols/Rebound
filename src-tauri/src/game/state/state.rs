@@ -5,7 +5,7 @@ use crate::game::physics::Physics;
 use crate::game::state::playerid::PlayerId;
 use crate::game::util::Util;
 
-#[derive(Default, Clone, Serialize, Deserialize)]
+#[derive(Default, Clone, Deserialize)]
 pub struct InputState {
     pub up: bool,
     pub down: bool,
@@ -25,7 +25,7 @@ pub enum Kind {
     Goal,
 }
 
-#[derive(Serialize, Clone)]
+#[derive(Clone)]
 pub struct State {
     pub x: f32,
     pub y: f32,
@@ -217,4 +217,6 @@ impl State {
             },
         }
     }
+
+    //Payload
 }

@@ -14,12 +14,9 @@ export class State {
     public vy: number,
     public w: number,
     public h: number,
-    public mass: number,
     public is_static: boolean,
-    public friction: number,
-    public restitution: number,
     public kind: Kind,
     public player_id: number | null,
-    public input: any // or a proper InputState type
+    public team_id: number | null
   ) {}
 }
