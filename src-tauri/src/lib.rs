@@ -2,7 +2,7 @@ mod game;
 
 use crate::game::gamemanager::GameManager;
 use crate::game::input::{GameAction, InputValue};
-use crate::game::playerid::PlayerId;
+use crate::game::state::playerid::PlayerId;
 
 use std::sync::{Arc, Mutex};
 use tauri::{Emitter, Manager};

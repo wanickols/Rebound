@@ -1,6 +1,7 @@
 const GAME_WIDTH = 320;
 const GAME_HEIGHT = 180;
 import { spriteLibrary } from "./SpriteLibrary";
+import { State } from "./State";
 
 export class GameRenderer {
   private ctx: CanvasRenderingContext2D;
@@ -32,7 +33,7 @@ export class GameRenderer {
   }
 
   draw(s: State, scale: number, offsetX: number, offsetY: number) {
-    const sprite = spriteLibrary[s.kind]; // <--- use s.kind to pick the image
+    const sprite = spriteLibrary[s.kind.toString()]; // <--- use s.kind to pick the image
 
     if (sprite && sprite.complete) {
       this.ctx.drawImage(

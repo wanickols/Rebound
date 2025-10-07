@@ -1,9 +1,11 @@
+use crate::game::eventqueue::{EventQueue, GameEvent};
 use crate::game::input::{GameAction, GameActionEvent, InputValue};
 use crate::game::physics::Physics;
-use crate::game::playerid::PlayerId;
-use crate::game::state::State;
+use crate::game::scoremanager::{ScoreManager, Team};
+use crate::game::state::{playerid::PlayerId, state::State};
 use std::collections::HashMap;
 
+use tauri::window::Color;
 use tauri::AppHandle;
 
 pub struct GameManager {
@@ -12,11 +14,28 @@ pub struct GameManager {
     pub app: AppHandle,
     pub width: f32,
     pub height: f32,
+    pub event_queue: EventQueue,
+    pub score_manager: ScoreManager,
 }
 
 impl GameManager {
     pub fn new(app: &AppHandle, width: f32, height: f32) -> Self {
         let _player = State::new_player(0.0, 0.0);
+
+        let score_manager = ScoreManager::new(
+            Team {
+                id: 0,
+                name: "Blue".into(),
+                color: Color(0, 0, 255, 255),
+                score: 5,
+            },
+            Team {
+                id: 1,
+                name: "Red".into(),
+                color: Color(255, 0, 0, 255),
+                score: 3,
+            },
+        );
 
         let mut gm = Self {
             app: app.clone(),
@@ -24,6 +43,8 @@ impl GameManager {
             pending_inputs: HashMap::new(),
             width,
             height,
+            event_queue: EventQueue::new(),
+            score_manager: score_manager,
         };
 
         gm.create_borders();
@@ -69,6 +90,19 @@ impl GameManager {
     }
 
     pub fn update(&mut self) {
+        //Check Events
+        for event in self.event_queue.drain() {
+            match event {
+                GameEvent::GoalScored { team_id } => {
+                    self.score_manager.add_point(team_id);
+                }
+                GameEvent::ResetScore => {
+                    self.score_manager.reset();
+                }
+                GameEvent::BallReset => { /* ... */ }
+            }
+        }
+
         //Apply physics
         for (&player_id, events) in &self.pending_inputs {
             if let Some(state) = self
@@ -94,6 +128,6 @@ impl GameManager {
         }
         self.pending_inputs.clear();
         let dt: f32 = 1.0 / 120.0; // ~0.016
-        Physics::update(&mut self.states, dt);
+        Physics::update(&mut self.states, dt, &mut self.event_queue);
     }
 }
