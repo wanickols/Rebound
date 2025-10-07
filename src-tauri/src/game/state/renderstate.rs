@@ -17,7 +17,7 @@ pub struct RenderState {
     pub is_trigger: bool,
     pub kind: Kind,
     pub player_id: Option<PlayerId>,
-    pub team_id: u8,
+    pub team_id: Option<u8>,
 }
 
 impl RenderState {
@@ -32,7 +32,7 @@ impl RenderState {
         is_trigger: bool,
         kind: Kind,
         player_id: Option<PlayerId>,
-        team_id: u8,
+        team_id: Option<u8>,
     ) -> Self {
         Self {
             x,

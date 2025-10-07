@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::game::eventqueue::{EventQueue, GameEvent};
 use crate::game::physics::Physics;
-use crate::game::state::playerid::PlayerId;
+use crate::game::state::playerid::{self, PlayerId};
 use crate::game::util::Util;
 
 #[derive(Default, Clone, Deserialize)]
@@ -14,6 +14,20 @@ pub struct InputState {
     pub action: bool,
     pub mouse_x: f32,
     pub mouse_y: f32,
+}
+
+impl InputState {
+    pub fn new() -> Self {
+        InputState {
+            up: false,
+            down: false,
+            left: false,
+            right: false,
+            action: false,
+            mouse_x: 0.0,
+            mouse_y: 0.0,
+        }
+    }
 }
 
 #[derive(Serialize, Copy, Clone)]
@@ -40,11 +54,12 @@ pub struct State {
     pub restitution: f32,
     pub kind: Kind,
     pub player_id: Option<PlayerId>,
-    pub team_id: u8,
-    pub input: InputState,
+    pub team_id: Option<u8>,
+    pub input: Option<InputState>,
 }
 
 impl State {
+    //Public Functions
     pub fn apply_friction(&mut self, dt: f32) {
         self.vx *= 1.0 - self.friction * dt;
         self.vy *= 1.0 - self.friction * dt;
@@ -68,34 +83,10 @@ impl State {
         self.y += self.vy * dt;
     }
 
-    pub fn bounds(&self) -> (f32, f32, f32, f32) {
-        (self.x, self.y, self.x + self.w, self.y + self.h)
-    }
-
     pub fn check_collision_predicted(&self, other: &State, next_x: f32, next_y: f32) -> bool {
         let (ax1, ay1, ax2, ay2) = (next_x, next_y, next_x + self.w, next_y + self.h);
         let (bx1, by1, bx2, by2) = other.bounds();
         ax1 < bx2 && ax2 > bx1 && ay1 < by2 && ay2 > by1
-    }
-
-    //returns dx, dy, and overlap x and y
-    pub fn find_overlap(&self, other: &State) -> (f32, f32, f32, f32) {
-        // Compute centers
-        let ax_center = self.x + self.w / 2.0;
-        let ay_center = self.y + self.h / 2.0;
-        let bx_center = other.x + other.w / 2.0;
-        let by_center = other.y + other.h / 2.0;
-
-        let dx = bx_center - ax_center;
-        let dy = by_center - ay_center;
-
-        let combined_half_width = (self.w + other.w) / 2.0;
-        let combined_half_height = (self.h + other.h) / 2.0;
-
-        let overlap_x = combined_half_width - dx.abs();
-        let overlap_y = combined_half_height - dy.abs();
-
-        return (dx, dy, overlap_x, overlap_y);
     }
 
     pub fn handle_collision(states: &mut Vec<State>, i: usize, j: usize, events: &mut EventQueue) {
@@ -120,103 +111,111 @@ impl State {
         Physics::resolve_pair(a, b, dx, dy, overlap_x, overlap_y);
     }
 
-    pub fn handle_trigger_collision(&self, other: &State, events: &mut EventQueue) {
+    //Helper Functions
+    fn bounds(&self) -> (f32, f32, f32, f32) {
+        (self.x, self.y, self.x + self.w, self.y + self.h)
+    }
+    //returns dx, dy, and overlap x and y
+    fn find_overlap(&self, other: &State) -> (f32, f32, f32, f32) {
+        // Compute centers
+        let ax_center = self.x + self.w / 2.0;
+        let ay_center = self.y + self.h / 2.0;
+        let bx_center = other.x + other.w / 2.0;
+        let by_center = other.y + other.h / 2.0;
+
+        let dx = bx_center - ax_center;
+        let dy = by_center - ay_center;
+
+        let combined_half_width = (self.w + other.w) / 2.0;
+        let combined_half_height = (self.h + other.h) / 2.0;
+
+        let overlap_x = combined_half_width - dx.abs();
+        let overlap_y = combined_half_height - dy.abs();
+
+        return (dx, dy, overlap_x, overlap_y);
+    }
+
+    fn handle_trigger_collision(&self, other: &State, events: &mut EventQueue) {
         match (self.kind, other.kind) {
             (Kind::Ball, Kind::Goal) => self.trigger_score(events),
             _ => {}
         }
     }
 
-    pub fn trigger_score(&self, events: &mut EventQueue) {
+    fn trigger_score(&self, events: &mut EventQueue) {
         events.push(GameEvent::GoalScored {
-            team_id: self.team_id,
+            team_id: self.team_id.expect("Goal state must have a team_id"),
         });
     }
 
     //New States
-    pub fn new_wall(x: f32, y: f32, w: f32, h: f32) -> Self {
+    pub fn new() -> Self {
         State {
-            x,
-            y,
-            w,
-            h,
-            mass: 1000.0,
+            x: 0.0,
+            y: 0.0,
+            w: 1.0,
+            h: 1.0,
             vx: 0.0,
             vy: 0.0,
-            is_static: true,
-            is_trigger: false,
-            friction: 0.0,
-            restitution: 0.8,
-            kind: Kind::Wall,
-            player_id: None,
-            team_id: 0,
-            input: InputState {
-                up: false,
-                down: false,
-                left: false,
-                right: false,
-                action: false,
-                mouse_x: 0.0,
-                mouse_y: 0.0,
-            },
-        }
-    }
-
-    pub fn new_player(x: f32, y: f32) -> Self {
-        State {
-            x,
-            y,
-            vx: 0.0,
-            vy: 0.0,
-            w: 20.0, // arbitrary paddle/ball size for now
-            h: 20.0,
-            mass: 100.0,
-            is_static: false,
-            is_trigger: false,
-            friction: 0.1,
-            restitution: 0.6,
-            kind: Kind::Player,
-            player_id: Some(PlayerId::new()),
-            team_id: 0,
-            input: InputState {
-                up: false,
-                down: false,
-                left: false,
-                right: false,
-                action: false,
-                mouse_x: 0.0,
-                mouse_y: 0.0,
-            },
-        }
-    }
-
-    pub fn new_ball(x: f32, y: f32) -> Self {
-        State {
-            x,
-            y,
-            vx: 0.0,
-            vy: 0.0,
-            w: 12.0, // smaller than player
-            h: 12.0,
             mass: 1.0,
             is_static: false,
             is_trigger: false,
-            friction: 0.01,
-            restitution: 0.9,
+            friction: 0.0,
+            restitution: 0.5,
             kind: Kind::Ball,
             player_id: None,
-            team_id: 0,
-            input: InputState {
-                up: false,
-                down: false,
-                left: false,
-                right: false,
-                action: false,
-                mouse_x: 0.0,
-                mouse_y: 0.0,
-            },
+            team_id: None,
+            input: None,
         }
     }
 
-    //Payload
+    pub fn new_wall(x: f32, y: f32, w: f32, h: f32) -> Self {
+        let mut s = State::new(); // base defaults
+        s.x = x;
+        s.y = y;
+        s.w = w;
+        s.h = h;
+        s.mass = 1000.0;
+        s.is_static = true;
+        s.kind = Kind::Wall;
+        s
+    }
+
+    pub fn new_player(x: f32, y: f32) -> Self {
+        let mut s = State::new();
+        s.x = x;
+        s.y = y;
+        s.w = 20.0;
+        s.h = 20.0;
+        s.mass = 100.0;
+        s.friction = 0.1;
+        s.restitution = 0.6;
+        s.kind = Kind::Player;
+        s.player_id = Some(PlayerId::new());
+        s.input = Some(InputState::new());
+        s
+    }
+
+    pub fn new_ball(x: f32, y: f32) -> Self {
+        let mut s = State::new();
+        s.x = x;
+        s.y = y;
+        s.w = 12.0;
+        s.h = 12.0;
+        s.mass = 1.0;
+        s.friction = 0.01;
+        s.restitution = 0.9;
+        s.kind = Kind::Ball;
+        s
+    }
+
+    pub fn new_goal(x: f32, y: f32, w: f32, h: f32, team_id: u8) -> Self {
+        let mut s = State::new();
+        s.x = x;
+        s.y = y;
+        s.w = w;
+        s.h = h;
+        s.team_id = Some(team_id);
+        s
+    }
 }

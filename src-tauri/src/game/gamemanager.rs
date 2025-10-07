@@ -111,16 +111,17 @@ impl GameManager {
                 .find(|s| s.player_id == Some(player_id))
             {
                 for event in events {
+                    let input = state.input.as_mut().expect("No Input On Player");
                     match event.action {
-                        GameAction::Up => state.input.up = event.value.as_bool(),
-                        GameAction::Down => state.input.down = event.value.as_bool(),
-                        GameAction::Left => state.input.left = event.value.as_bool(),
-                        GameAction::Right => state.input.right = event.value.as_bool(),
-                        GameAction::Action => state.input.action = event.value.as_bool(),
+                        GameAction::Up => input.up = event.value.as_bool(),
+                        GameAction::Down => input.down = event.value.as_bool(),
+                        GameAction::Left => input.left = event.value.as_bool(),
+                        GameAction::Right => input.right = event.value.as_bool(),
+                        GameAction::Action => input.action = event.value.as_bool(),
                         GameAction::MouseMove => {
                             let (x, y) = event.value.as_vec2();
-                            state.input.mouse_x = x;
-                            state.input.mouse_y = y;
+                            input.mouse_x = x;
+                            input.mouse_y = y;
                         }
                     }
                 }
@@ -131,5 +132,3 @@ impl GameManager {
         Physics::update(&mut self.states, dt, &mut self.event_queue);
     }
 }
-
-

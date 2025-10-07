@@ -12,7 +12,10 @@ impl Physics {
         let mut ax = 0.0;
         let mut ay = 0.0;
 
-        let input = &state.input;
+        let input = &state
+            .input
+            .as_mut()
+            .expect("Applied Input without InputState");
 
         if input.up {
             ay -= 1.0;
@@ -42,7 +45,9 @@ impl Physics {
                 continue;
             }
 
-            Physics::apply_input(&mut states[i]);
+            if (states[i].input.is_some()) {
+                Physics::apply_input(&mut states[i]);
+            }
 
             states[i].apply_friction(dt);
             states[i].stop_if_tiny();
