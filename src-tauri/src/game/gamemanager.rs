@@ -27,13 +27,13 @@ impl GameManager {
                 id: 0,
                 name: "Blue".into(),
                 color: Color(0, 0, 255, 255),
-                score: 5,
+                score: 0,
             },
             Team {
                 id: 1,
                 name: "Red".into(),
                 color: Color(255, 0, 0, 255),
-                score: 3,
+                score: 0,
             },
         );
 

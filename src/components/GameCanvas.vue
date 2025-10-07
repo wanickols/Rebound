@@ -1,15 +1,18 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from "vue";
-import { InputManager } from "@/utils/InputManager";
 import { GameRenderer } from "@/Game/Renderer/GameRenderer";
 import { listen } from "@tauri-apps/api/event";
 import { GamePayload } from "@/Game/GamePayload";
+import { InputManager } from "@/utils/InputManager";
 
 const canvas = ref<HTMLCanvasElement | null>(null);
-const inputManager = new InputManager();
 
 const GAME_WIDTH = 1920;
 const GAME_HEIGHT = 1080;
+
+const props = defineProps<{
+  inputManager: InputManager; // or use the proper type
+}>();
 
 onMounted(async () => {
   if (!canvas.value) return;
@@ -35,13 +38,6 @@ onMounted(async () => {
     const payload = GamePayload.from(event.payload);
     renderer.updateState(payload.states);
   });
-
-  function gameLoop() {
-    const now = performance.now();
-    inputManager.update(now);
-    requestAnimationFrame(gameLoop);
-  }
-  gameLoop();
 });
 
 onBeforeUnmount(() => {
@@ -70,7 +66,7 @@ function onMouseMove(e: MouseEvent) {
   const rect = canvas.value.getBoundingClientRect();
   const x = e.clientX - rect.left;
   const y = e.clientY - rect.top;
-  inputManager.handleMouseMove(x, y);
+  props.inputManager.handleMouseMove(x, y);
 }
 </script>
 
