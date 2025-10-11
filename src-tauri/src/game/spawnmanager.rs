@@ -24,7 +24,7 @@ impl SpawnManager {
     }
 
     pub fn spawn_states(&mut self, states: &mut Vec<State>) {
-        self.add_player(states, 0.0, 50.0);
+        self.add_player(states, 10.0, 50.0);
         self.add_ball(states, 100.0, 50.0);
         self.add_player(states, 200.0, 50.0);
     }

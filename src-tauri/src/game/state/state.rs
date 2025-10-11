@@ -90,38 +90,76 @@ impl State {
     }
 
     pub fn check_collision_predicted(&self, other: &State, next_x: f32, next_y: f32) -> bool {
-        // only handle rectangles; if it's not a rectangle, bail out (here: return false)
-        let (w, h) = if let Shape::Rectangle { w, h } = &self.shape {
-            (*w, *h)
-        } else {
-            return false; // or panic!("Circle not supported yet")
-        };
+        match &self.shape {
+            // Rectangle vs Rectangle
+            Shape::Rectangle { w, h } => {
+                if let Shape::Rectangle { .. } = &other.shape {
+                    let (ax1, ay1, ax2, ay2) = (next_x, next_y, next_x + w, next_y + h);
+                    let (bx1, by1, bx2, by2) = other.bounds();
+                    return ax1 < bx2 && ax2 > bx1 && ay1 < by2 && ay2 > by1;
+                }
+                // Rectangle vs Circle -> flip to Circle vs Rectangle
+                if let Shape::Circle { .. } = &other.shape {
+                    return other.check_collision_predicted(self, other.x, other.y);
+                }
+                false
+            }
 
-        let (ax1, ay1, ax2, ay2) = (next_x, next_y, next_x + w, next_y + h);
-        let (bx1, by1, bx2, by2) = other.bounds();
-        ax1 < bx2 && ax2 > bx1 && ay1 < by2 && ay2 > by1
+            // Circle vs Circle
+            Shape::Circle { radius } => {
+                if let Shape::Circle { radius: br } = &other.shape {
+                    let dx = (next_x) - other.x;
+                    let dy = (next_y) - other.y;
+                    return dx * dx + dy * dy < (radius + br).powi(2);
+                }
+
+                // Circle vs Rectangle
+                if let Shape::Rectangle { w, h } = &other.shape {
+                    let closest_x = next_x.clamp(other.x, other.x + w);
+                    let closest_y = next_y.clamp(other.y, other.y + h);
+
+                    let dx = next_x - closest_x;
+                    let dy = next_y - closest_y;
+
+                    return dx * dx + dy * dy < radius.powi(2);
+                }
+
+                false
+            }
+
+            _ => false,
+        }
     }
 
     pub fn handle_collision(states: &mut Vec<State>, i: usize, j: usize, events: &mut EventQueue) {
         let (a, b) = Util::two_mut(states, i, j);
 
-        let (dx, dy, overlap_x, overlap_y) = a.find_overlap(b);
-
-        if overlap_x <= 0.0 || overlap_y <= 0.0 {
-            return;
-        }
-
-        if a.is_trigger || b.is_trigger {
-            if a.is_trigger {
-                a.handle_trigger_collision(b, events);
+        // Declare variables here
+        let (nx, ny, overlap) = match (&a.shape, &b.shape) {
+            (Shape::Circle { .. }, Shape::Circle { .. }) => {
+                // For circle-circle, use full overlap
+                if let Some((nx, ny, overlap)) = State::find_overlap(a, b) {
+                    (nx, ny, overlap)
+                } else {
+                    // No collision; early return
+                    return;
+                }
             }
-            if b.is_trigger {
-                b.handle_trigger_collision(a, events);
+            _ => {
+                // Everything else: simple arcade bounce
+                a.compute_min_axis_overlap(b)
             }
-            return;
-        }
+        };
 
-        Physics::resolve_pair(a, b, dx, dy, overlap_x, overlap_y);
+        // Trigger handling
+        if a.is_trigger {
+            a.handle_trigger_collision(b, events);
+        } else if b.is_trigger {
+            b.handle_trigger_collision(a, events);
+        } else {
+            // Resolve physics
+            Physics::resolve_pair(a, b, nx, ny, overlap);
+        }
     }
 
     //Helper Functions
@@ -137,40 +175,70 @@ impl State {
     }
 
     //returns dx, dy, and overlap x and y
-    fn find_overlap(&self, other: &State) -> (f32, f32, f32, f32) {
+    pub fn find_overlap(a: &State, b: &State) -> Option<(f32, f32, f32)> {
+        // Try to cast both shapes to circles
+        let ar = if let Shape::Circle { radius } = a.shape {
+            radius
+        } else {
+            return None;
+        };
+        let br = if let Shape::Circle { radius } = b.shape {
+            radius
+        } else {
+            return None;
+        };
+
+        let dx = b.x - a.x;
+        let dy = b.y - a.y;
+        let dist = (dx * dx + dy * dy).sqrt();
+        let combined_r = ar + br;
+
+        if dist < combined_r {
+            let nx = if dist == 0.0 { 1.0 } else { dx / dist };
+            let ny = if dist == 0.0 { 0.0 } else { dy / dist };
+            let overlap = combined_r - dist;
+            Some((nx, ny, overlap))
+        } else {
+            None
+        }
+    }
+
+    /// Compute the minimum-penetration axis for simple arcade collisions
+    pub fn compute_min_axis_overlap(&self, other: &State) -> (f32, f32, f32) {
         // Extract sizes from shapes
-        let (aw, ah) = match &self.shape {
-            Shape::Rectangle { w, h } => (*w, *h),
+        let (aw, ah, ax_center, ay_center) = match &self.shape {
+            Shape::Rectangle { w, h } => (*w, *h, self.x + w / 2.0, self.y + h / 2.0),
             Shape::Circle { radius } => {
                 let d = *radius * 2.0;
-                (d, d)
+                (d, d, self.x, self.y) // x,y = center
+            }
+        };
+        let (bw, bh, bx_center, by_center) = match &other.shape {
+            Shape::Rectangle { w, h } => (*w, *h, other.x + w / 2.0, other.y + h / 2.0),
+            Shape::Circle { radius } => {
+                let d = *radius * 2.0;
+                (d, d, other.x, other.y) // x,y = center
             }
         };
 
-        let (bw, bh) = match &other.shape {
-            Shape::Rectangle { w, h } => (*w, *h),
-            Shape::Circle { radius } => {
-                let d = *radius * 2.0;
-                (d, d)
-            }
-        };
-
-        // Compute centers
-        let ax_center = self.x + aw / 2.0;
-        let ay_center = self.y + ah / 2.0;
-        let bx_center = other.x + bw / 2.0;
-        let by_center = other.y + bh / 2.0;
-
+        // Delta between centers
         let dx = bx_center - ax_center;
         let dy = by_center - ay_center;
 
+        // Combined half sizes
         let combined_half_width = (aw + bw) / 2.0;
         let combined_half_height = (ah + bh) / 2.0;
 
+        // Overlap along each axis
         let overlap_x = combined_half_width - dx.abs();
         let overlap_y = combined_half_height - dy.abs();
 
-        (dx, dy, overlap_x, overlap_y)
+        // Pick axis of minimum penetration
+        if overlap_x < overlap_y {
+            (dx.signum(), 0.0, overlap_x)
+        } else {
+            (0.0, dy.signum(), overlap_y)
+        }
     }
 
     fn handle_trigger_collision(&self, other: &State, events: &mut EventQueue) {
@@ -185,6 +253,13 @@ impl State {
         events.push(GameEvent::GoalScored {
             team_id: self.team_id.expect("Goal state must have a team_id"),
         });
+    }
+
+    pub fn radius(&self) -> f32 {
+        match self.shape {
+            Shape::Circle { radius } => radius,
+            _ => 0.0,
+        }
     }
 
     //New States
@@ -213,6 +288,7 @@ impl State {
         s.y = y;
         s.shape = Shape::Rectangle { w, h };
         s.mass = 1000.0;
+        s.restitution = 0.4;
         s.is_static = true;
         s.kind = Kind::Wall;
         s
@@ -222,7 +298,7 @@ impl State {
         let mut s = State::new();
         s.x = x;
         s.y = y;
-        s.shape = Shape::Rectangle { w: 20.0, h: 20.0 };
+        s.shape = Shape::Circle { radius: 10.0 };
         s.mass = 100.0;
         s.friction = 0.1;
         s.restitution = 0.6;
@@ -236,7 +312,7 @@ impl State {
         let mut s = State::new();
         s.x = x;
         s.y = y;
-        s.shape = Shape::Rectangle { w: 12.0, h: 12.0 };
+        s.shape = Shape::Circle { radius: 6.0 };
         s.mass = 1.0;
         s.friction = 0.01;
         s.restitution = 0.9;

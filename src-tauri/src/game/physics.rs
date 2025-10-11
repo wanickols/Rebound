@@ -1,4 +1,7 @@
-use crate::game::{eventqueue::EventQueue, state::state::State};
+use crate::game::{
+    eventqueue::EventQueue,
+    state::state::{Shape, State},
+};
 
 pub struct Physics;
 
@@ -69,21 +72,7 @@ impl Physics {
         }
     }
 
-    pub fn resolve_pair(
-        a: &mut State,
-        b: &mut State,
-        dx: f32,
-        dy: f32,
-        overlap_x: f32,
-        overlap_y: f32,
-    ) {
-        // Pick axis of minimum penetration
-        let (nx, ny, overlap) = if overlap_x < overlap_y {
-            (dx.signum(), 0.0, overlap_x)
-        } else {
-            (0.0, dy.signum(), overlap_y)
-        };
-
+    pub fn resolve_pair(a: &mut State, b: &mut State, nx: f32, ny: f32, overlap: f32) {
         // --- IMPULSE RESPONSE ---
         let rvx = b.vx - a.vx;
         let rvy = b.vy - a.vy;
