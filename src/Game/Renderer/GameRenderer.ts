@@ -33,24 +33,44 @@ export class GameRenderer {
   }
 
   draw(s: State, scale: number, offsetX: number, offsetY: number) {
-    const sprite = spriteLibrary[s.kind.toString()]; // <--- use s.kind to pick the image
-
+    const sprite = spriteLibrary[s.kind.toString()];
+    // Compute position & dimensions based on shape
+    let x = s.x * scale + offsetX;
+    let y = s.y * scale + offsetY;
+    let w = 0;
+    let h = 0;
+    console.log(s);
+    if (s.shape.type === "rectangle") {
+      w = s.shape.w * scale;
+      h = s.shape.h * scale;
+    } else if (s.shape.type === "circle") {
+      // For circles, you might center the sprite around (x, y)
+      const r = s.shape.radius * scale;
+      w = h = r * 2;
+      x -= r; // Center it properly
+      y -= r;
+    }
+    // --- SPRITE DRAWING ---
     if (sprite && sprite.complete) {
-      this.ctx.drawImage(
-        sprite,
-        s.x * scale + offsetX,
-        s.y * scale + offsetY,
-        s.w * scale,
-        s.h * scale
-      );
-    } else {
-      this.ctx.fillStyle = s.is_static ? "gray" : "lime";
-      this.ctx.fillRect(
-        s.x * scale + offsetX,
-        s.y * scale + offsetY,
-        s.w * scale,
-        s.h * scale
-      );
+      this.ctx.drawImage(sprite, x, y, w, h);
+    }
+    // --- FALLBACK (no sprite) ---
+    else {
+      if (s.shape.type === "rectangle") {
+        this.ctx.fillStyle = s.is_static ? "gray" : "lime";
+        this.ctx.fillRect(x, y, w, h);
+      } else if (s.shape.type === "circle") {
+        this.ctx.beginPath();
+        this.ctx.arc(
+          s.x * scale + offsetX,
+          s.y * scale + offsetY,
+          s.shape.radius * scale,
+          0,
+          Math.PI * 2
+        );
+        this.ctx.fillStyle = s.is_static ? "gray" : "lime";
+        this.ctx.fill();
+      }
     }
   }
 

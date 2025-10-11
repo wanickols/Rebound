@@ -6,14 +6,17 @@ export enum Kind {
   Goal = "Goal",
 }
 
+export type Shape =
+  | { type: "circle"; radius: number }
+  | { type: "rectangle"; w: number; h: number };
+
 export class State {
   constructor(
     public x: number,
     public y: number,
     public vx: number,
     public vy: number,
-    public w: number,
-    public h: number,
+    public shape: Shape,
     public is_static: boolean,
     public kind: Kind,
     public player_id: number | null,

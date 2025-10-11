@@ -2,15 +2,14 @@ use serde::Serialize;
 
 use crate::game::state::{
     playerid::PlayerId,
-    state::{Kind, State},
+    state::{Kind, Shape, State},
 };
 
 #[derive(Serialize, Clone)]
 pub struct RenderState {
     pub x: f32,
     pub y: f32,
-    pub w: f32,
-    pub h: f32,
+    pub shape: Shape,
     pub vx: f32,
     pub vy: f32,
     pub is_static: bool,
@@ -24,8 +23,7 @@ impl RenderState {
     pub fn new(
         x: f32,
         y: f32,
-        w: f32,
-        h: f32,
+        shape: Shape,
         vx: f32,
         vy: f32,
         is_static: bool,
@@ -37,8 +35,7 @@ impl RenderState {
         Self {
             x,
             y,
-            w,
-            h,
+            shape,
             vx,
             vy,
             is_static,
@@ -55,8 +52,7 @@ impl From<&State> for RenderState {
         Self {
             x: state.x,
             y: state.y,
-            w: state.w,
-            h: state.h,
+            shape: state.shape,
             vx: state.vx,
             vy: state.vy,
             is_static: state.is_static,

@@ -39,14 +39,20 @@ pub enum Kind {
     Goal,
 }
 
+#[derive(Serialize, Deserialize, Clone, Copy, Debug)]
+#[serde(tag = "type", rename_all = "lowercase")]
+pub enum Shape {
+    Circle { radius: f32 },
+    Rectangle { w: f32, h: f32 },
+}
+
 #[derive(Clone)]
 pub struct State {
     pub x: f32,
     pub y: f32,
     pub vx: f32,
     pub vy: f32,
-    pub w: f32,
-    pub h: f32,
+    pub shape: Shape,
     pub mass: f32,
     pub is_static: bool,
     pub is_trigger: bool,
@@ -84,7 +90,14 @@ impl State {
     }
 
     pub fn check_collision_predicted(&self, other: &State, next_x: f32, next_y: f32) -> bool {
-        let (ax1, ay1, ax2, ay2) = (next_x, next_y, next_x + self.w, next_y + self.h);
+        // only handle rectangles; if it's not a rectangle, bail out (here: return false)
+        let (w, h) = if let Shape::Rectangle { w, h } = &self.shape {
+            (*w, *h)
+        } else {
+            return false; // or panic!("Circle not supported yet")
+        };
+
+        let (ax1, ay1, ax2, ay2) = (next_x, next_y, next_x + w, next_y + h);
         let (bx1, by1, bx2, by2) = other.bounds();
         ax1 < bx2 && ax2 > bx1 && ay1 < by2 && ay2 > by1
     }
@@ -113,26 +126,51 @@ impl State {
 
     //Helper Functions
     fn bounds(&self) -> (f32, f32, f32, f32) {
-        (self.x, self.y, self.x + self.w, self.y + self.h)
+        match &self.shape {
+            Shape::Rectangle { w, h } => (self.x, self.y, self.x + w, self.y + h),
+            Shape::Circle { radius } => {
+                // if you want to approximate the circle with a bounding box
+                let d = radius * 2.0;
+                (self.x, self.y, self.x + d, self.y + d)
+            }
+        }
     }
+
     //returns dx, dy, and overlap x and y
     fn find_overlap(&self, other: &State) -> (f32, f32, f32, f32) {
+        // Extract sizes from shapes
+        let (aw, ah) = match &self.shape {
+            Shape::Rectangle { w, h } => (*w, *h),
+            Shape::Circle { radius } => {
+                let d = *radius * 2.0;
+                (d, d)
+            }
+        };
+
+        let (bw, bh) = match &other.shape {
+            Shape::Rectangle { w, h } => (*w, *h),
+            Shape::Circle { radius } => {
+                let d = *radius * 2.0;
+                (d, d)
+            }
+        };
+
         // Compute centers
-        let ax_center = self.x + self.w / 2.0;
-        let ay_center = self.y + self.h / 2.0;
-        let bx_center = other.x + other.w / 2.0;
-        let by_center = other.y + other.h / 2.0;
+        let ax_center = self.x + aw / 2.0;
+        let ay_center = self.y + ah / 2.0;
+        let bx_center = other.x + bw / 2.0;
+        let by_center = other.y + bh / 2.0;
 
         let dx = bx_center - ax_center;
         let dy = by_center - ay_center;
 
-        let combined_half_width = (self.w + other.w) / 2.0;
-        let combined_half_height = (self.h + other.h) / 2.0;
+        let combined_half_width = (aw + bw) / 2.0;
+        let combined_half_height = (ah + bh) / 2.0;
 
         let overlap_x = combined_half_width - dx.abs();
         let overlap_y = combined_half_height - dy.abs();
 
-        return (dx, dy, overlap_x, overlap_y);
+        (dx, dy, overlap_x, overlap_y)
     }
 
     fn handle_trigger_collision(&self, other: &State, events: &mut EventQueue) {
@@ -154,8 +192,7 @@ impl State {
         State {
             x: 0.0,
             y: 0.0,
-            w: 1.0,
-            h: 1.0,
+            shape: Shape::Rectangle { w: 1.0, h: 1.0 },
             vx: 0.0,
             vy: 0.0,
             mass: 1.0,
@@ -174,8 +211,7 @@ impl State {
         let mut s = State::new(); // base defaults
         s.x = x;
         s.y = y;
-        s.w = w;
-        s.h = h;
+        s.shape = Shape::Rectangle { w, h };
         s.mass = 1000.0;
         s.is_static = true;
         s.kind = Kind::Wall;
@@ -186,8 +222,7 @@ impl State {
         let mut s = State::new();
         s.x = x;
         s.y = y;
-        s.w = 20.0;
-        s.h = 20.0;
+        s.shape = Shape::Rectangle { w: 20.0, h: 20.0 };
         s.mass = 100.0;
         s.friction = 0.1;
         s.restitution = 0.6;
@@ -201,8 +236,7 @@ impl State {
         let mut s = State::new();
         s.x = x;
         s.y = y;
-        s.w = 12.0;
-        s.h = 12.0;
+        s.shape = Shape::Rectangle { w: 12.0, h: 12.0 };
         s.mass = 1.0;
         s.friction = 0.01;
         s.restitution = 0.9;
@@ -214,8 +248,7 @@ impl State {
         let mut s = State::new();
         s.x = x;
         s.y = y;
-        s.w = w;
-        s.h = h;
+        s.shape = Shape::Rectangle { w, h };
         s.kind = Kind::Goal;
         s.is_trigger = true;
         s.is_static = true;
