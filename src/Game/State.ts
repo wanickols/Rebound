@@ -17,6 +17,7 @@ export class State {
     public vx: number,
     public vy: number,
     public shape: Shape,
+    public angle: number,
     public is_static: boolean,
     public kind: Kind,
     public player_id: number | null,

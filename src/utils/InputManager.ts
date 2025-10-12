@@ -1,3 +1,4 @@
+import { GameRenderer } from "@/Game/Renderer/GameRenderer";
 import { invoke } from "@tauri-apps/api/core";
 
 export type GameAction =
@@ -33,6 +34,7 @@ export class InputManager {
   private lastMouse = { x: 0, y: 0 };
   private lastSent = 0;
   private sendInterval = 1000 / 30; // 30Hz update rate
+  private scale = 1.0;
 
   constructor() {
     window.addEventListener("keydown", (e) => this.handleKey(e.key, true));
@@ -61,9 +63,16 @@ export class InputManager {
     }
   }
 
+  setScale(scale: number) {
+    this.scale = scale;
+  }
+
   sendMouseToServer() {
     this.sendActionToServer(0, "mouseMove", {
-      Vec2: { x: this.lastMouse.x, y: this.lastMouse.y },
+      Vec2: {
+        x: this.lastMouse.x * this.scale,
+        y: this.lastMouse.y * this.scale,
+      },
     });
   }
 

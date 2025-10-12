@@ -8,6 +8,7 @@ pub use renderstate::RenderState;
 use serde::{Deserialize, Serialize};
 
 use crate::game::eventqueue::{EventQueue, GameEvent};
+use crate::game::input::PlayerController;
 use crate::game::physics::Physics;
 use crate::game::util::Util;
 
@@ -18,8 +19,7 @@ pub struct InputState {
     pub left: bool,
     pub right: bool,
     pub action: bool,
-    pub mouse_x: f32,
-    pub mouse_y: f32,
+    pub mouse_pos: (f32, f32),
 }
 
 impl InputState {
@@ -30,8 +30,7 @@ impl InputState {
             left: false,
             right: false,
             action: false,
-            mouse_x: 0.0,
-            mouse_y: 0.0,
+            mouse_pos: (0.0, 0.0),
         }
     }
 }
@@ -58,6 +57,7 @@ pub struct State {
     pub y: f32,
     pub vx: f32,
     pub vy: f32,
+    pub angle: f32,
     pub shape: Shape,
     pub mass: f32,
     pub is_static: bool,
@@ -67,7 +67,7 @@ pub struct State {
     pub kind: Kind,
     pub player_id: Option<PlayerId>,
     pub team_id: Option<u8>,
-    pub input: Option<InputState>,
+    pub player_controller: Option<PlayerController>,
 }
 
 impl State {
@@ -268,6 +268,11 @@ impl State {
         }
     }
 
+    pub fn input(&mut self) -> &mut InputState {
+        let pc = self.player_controller.as_mut().unwrap();
+        &mut pc.input
+    }
+
     //New States
     pub fn new() -> Self {
         State {
@@ -276,6 +281,7 @@ impl State {
             shape: Shape::Rectangle { w: 1.0, h: 1.0 },
             vx: 0.0,
             vy: 0.0,
+            angle: 0.0,
             mass: 1.0,
             is_static: false,
             is_trigger: false,
@@ -284,7 +290,7 @@ impl State {
             kind: Kind::Ball,
             player_id: None,
             team_id: None,
-            input: None,
+            player_controller: None,
         }
     }
 
@@ -306,11 +312,11 @@ impl State {
         s.y = y;
         s.shape = Shape::Circle { radius: 10.0 };
         s.mass = 100.0;
-        s.friction = 0.1;
+        s.friction = 0.3;
         s.restitution = 0.6;
         s.kind = Kind::Player;
         s.player_id = Some(PlayerId::new());
-        s.input = Some(InputState::new());
+        s.player_controller = Some(PlayerController::new(50.0, 400.0));
         s
     }
 
@@ -320,7 +326,7 @@ impl State {
         s.y = y;
         s.shape = Shape::Circle { radius: 6.0 };
         s.mass = 1.0;
-        s.friction = 0.01;
+        s.friction = 0.2;
         s.restitution = 0.9;
         s.kind = Kind::Ball;
         s

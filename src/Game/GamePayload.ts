@@ -12,6 +12,7 @@ export class GamePayload {
         s.vx,
         s.vy,
         s.shape,
+        s.angle,
         s.is_static,
         s.kind,
         s.player_id,

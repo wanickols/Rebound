@@ -1,61 +1,35 @@
 use crate::game::{
     eventqueue::EventQueue,
+    input::PlayerController,
     state::{Shape, State},
 };
 
 pub struct Physics;
 
 impl Physics {
-    pub fn apply_input(state: &mut State) {
-        // acceleration constants
-        let accel = 50.0;
-        let max_speed = 400.0;
-
-        // input direction
-        let mut ax = 0.0;
-        let mut ay = 0.0;
-
-        let input = &state
-            .input
-            .as_mut()
-            .expect("Applied Input without InputState");
-
-        if input.up {
-            ay -= 1.0;
-        }
-        if input.down {
-            ay += 1.0;
-        }
-        if input.left {
-            ax -= 1.0;
-        }
-        if input.right {
-            ax += 1.0;
-        }
-
-        // apply acceleration to velocity
-        state.vx += ax * accel;
-        state.vy += ay * accel;
-
-        // clamp velocity
-        state.vx = state.vx.clamp(-max_speed, max_speed);
-        state.vy = state.vy.clamp(-max_speed, max_speed);
-    }
-
     pub fn update(states: &mut Vec<State>, dt: f32, events: &mut EventQueue) {
         for i in 0..states.len() {
-            if states[i].is_static {
+            let s = &mut states[i];
+            if s.is_static {
                 continue;
             }
 
-            if (states[i].input.is_some()) {
-                Physics::apply_input(&mut states[i]);
+            if let Some(controller) = &mut s.player_controller {
+                let (x, y, vx, vy, angle) = controller.apply_input(s.x, s.y, s.vx, s.vy);
+
+                s.x = x;
+                s.y = y;
+                s.vx = vx;
+                s.vy = vy;
+                if (angle.is_some()) {
+                    s.angle = angle.unwrap();
+                }
             }
 
-            states[i].apply_friction(dt);
-            states[i].stop_if_tiny();
+            s.apply_friction(dt);
+            s.stop_if_tiny();
 
-            let (next_x, next_y) = states[i].predict_position(dt);
+            let (next_x, next_y) = s.predict_position(dt);
 
             for j in 0..states.len() {
                 if i == j {

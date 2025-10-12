@@ -1,5 +1,5 @@
 use crate::game::eventqueue::{EventQueue, GameEvent};
-use crate::game::input::{GameAction, GameActionEvent, InputValue};
+use crate::game::input::{GameAction, GameActionEvent, InputValue, PlayerController};
 use crate::game::physics::Physics;
 use crate::game::scoremanager::{ScoreManager, Team};
 use crate::game::spawnmanager::SpawnManager;
@@ -115,7 +115,7 @@ impl GameManager {
                 .find(|s| s.player_id == Some(player_id))
             {
                 for event in events {
-                    let input = state.input.as_mut().expect("No Input On Player");
+                    let input = state.input();
                     match event.action {
                         GameAction::Up => input.up = event.value.as_bool(),
                         GameAction::Down => input.down = event.value.as_bool(),
@@ -123,9 +123,7 @@ impl GameManager {
                         GameAction::Right => input.right = event.value.as_bool(),
                         GameAction::Action => input.action = event.value.as_bool(),
                         GameAction::MouseMove => {
-                            let (x, y) = event.value.as_vec2();
-                            input.mouse_x = x;
-                            input.mouse_y = y;
+                            input.mouse_pos = event.value.as_vec2();
                         }
                     }
                 }
