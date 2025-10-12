@@ -1,6 +1,6 @@
 use crate::game::{
     eventqueue::EventQueue,
-    state::state::{Shape, State},
+    state::{Shape, State},
 };
 
 pub struct Physics;

@@ -1,3 +1,5 @@
+pub mod playercontroller;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]

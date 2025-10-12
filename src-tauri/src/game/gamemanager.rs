@@ -3,7 +3,7 @@ use crate::game::input::{GameAction, GameActionEvent, InputValue};
 use crate::game::physics::Physics;
 use crate::game::scoremanager::{ScoreManager, Team};
 use crate::game::spawnmanager::SpawnManager;
-use crate::game::state::{playerid::PlayerId, state::State};
+use crate::game::state::{PlayerId, State};
 use std::collections::HashMap;
 
 use tauri::window::Color;

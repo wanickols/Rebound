@@ -1,4 +1,4 @@
-use crate::game::state::state::{Kind, State};
+use crate::game::state::{Kind, State};
 
 pub struct SpawnManager {
     pub player_starts: Vec<(f32, f32)>,

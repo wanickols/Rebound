@@ -1,7 +1,7 @@
 use crate::game::{
     gamemanager::GameManager,
     scoremanager::ScoreManager,
-    state::{renderstate::RenderState, state::State},
+    state::{renderstate::RenderState, State},
 };
 
 #[derive(serde::Serialize, Clone)]

@@ -1,8 +1,14 @@
+#[path = "playerid.rs"]
+pub mod playerid;
+pub mod renderstate;
+
+pub use playerid::PlayerId;
+pub use renderstate::RenderState;
+
 use serde::{Deserialize, Serialize};
 
 use crate::game::eventqueue::{EventQueue, GameEvent};
 use crate::game::physics::Physics;
-use crate::game::state::playerid::{self, PlayerId};
 use crate::game::util::Util;
 
 #[derive(Default, Clone, Deserialize)]

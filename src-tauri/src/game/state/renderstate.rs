@@ -2,7 +2,7 @@ use serde::Serialize;
 
 use crate::game::state::{
     playerid::PlayerId,
-    state::{Kind, Shape, State},
+    {Kind, Shape, State},
 };
 
 #[derive(Serialize, Clone)]
