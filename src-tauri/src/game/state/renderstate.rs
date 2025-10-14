@@ -62,7 +62,7 @@ impl From<&State> for RenderState {
             is_static: state.is_static,
             is_trigger: state.is_trigger,
             kind: state.kind,
-            player_id: state.player_id,
+            player_id: state.get_player_id(),
             team_id: state.team_id,
         }
     }

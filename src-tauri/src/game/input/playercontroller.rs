@@ -1,3 +1,5 @@
+use crate::game::eventqueue::{EventQueue, GameEvent};
+use crate::game::state::PlayerId;
 use crate::game::state::{InputState, State};
 
 #[derive(Clone)]
@@ -6,17 +8,19 @@ pub struct PlayerController {
     max_speed: f32,
     action_toggle: bool,
     mouse_pos: (f32, f32),
+    pub player_id: PlayerId,
     pub input: InputState,
 }
 
 impl PlayerController {
-    pub fn new(accel: f32, max_speed: f32) -> Self {
+    pub fn new(accel: f32, max_speed: f32, index: usize) -> Self {
         Self {
             accel,
             max_speed,
             action_toggle: false,
             mouse_pos: (0.0, 0.0),
             input: InputState::new(),
+            player_id: PlayerId::new(index),
         }
     }
 
@@ -26,6 +30,7 @@ impl PlayerController {
         y: f32,
         vx: f32,
         vy: f32,
+        events: &mut EventQueue,
     ) -> (f32, f32, f32, f32, Option<f32>) {
         // returns (new_x, new_y, new_vx, new_vy, new_angle)
 
@@ -46,12 +51,13 @@ impl PlayerController {
         if self.input.right {
             ax += 1.0;
         }
-        if self.input.action {
-            self.handle_action();
-        }
 
         if let Some(a) = self.handle_mouse((x, y)) {
             angle = Some(a);
+        }
+
+        if self.input.action {
+            self.handle_action(events);
         }
 
         // apply acceleration to velocity
@@ -65,8 +71,24 @@ impl PlayerController {
         (x, y, vx, vy, angle)
     }
 
-    fn handle_action(&mut self) {
+    fn handle_action(&mut self, events: &mut EventQueue) {
         self.action_toggle = !self.action_toggle;
+        if self.action_toggle {
+            events.push(GameEvent::TryGrab {
+                player_id: self.player_id,
+            });
+        } else {
+            //shoot
+        }
+    }
+
+    fn try_grab(&mut self, x: f32, y: f32, radius: f32, angle: f32, ball: &mut State) {
+        let s = State::new_hitcircle(x, y, radius, angle);
+        if let Some((nx, ny, overlap)) = State::find_overlap(&s, ball) {
+            ball.set_enable(false);
+            ball.x = x;
+            ball.y = y;
+        }
     }
 
     fn handle_mouse(&mut self, pos: (f32, f32)) -> Option<f32> {

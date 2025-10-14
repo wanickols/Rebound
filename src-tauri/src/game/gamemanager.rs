@@ -15,6 +15,7 @@ pub struct GameManager {
     pub app: AppHandle,
     pub width: f32,
     pub height: f32,
+    pub ball_holder: Option<PlayerId>,
     pub event_queue: EventQueue,
     pub score_manager: ScoreManager,
     pub spawn_manager: SpawnManager,
@@ -43,6 +44,7 @@ impl GameManager {
             pending_inputs: HashMap::new(),
             width,
             height,
+            ball_holder: None,
             event_queue: EventQueue::new(),
             score_manager: score_manager,
             spawn_manager: SpawnManager::new(),
@@ -104,6 +106,16 @@ impl GameManager {
                 GameEvent::ResetScore => {
                     self.score_manager.reset();
                 }
+                GameEvent::TryGrab { player_id } => {
+                    if self.ball_holder.is_some() {
+                        return;
+                    }
+
+                    if let Some(ball) = self.spawn_manager.get_ball_mut(&mut self.states) {
+                        ball.set_enable(false);
+                        self.ball_holder = Some(player_id);
+                    }
+                }
             }
         }
 
@@ -112,7 +124,7 @@ impl GameManager {
             if let Some(state) = self
                 .states
                 .iter_mut()
-                .find(|s| s.player_id == Some(player_id))
+                .find(|s| s.get_player_id() == Some(player_id))
             {
                 for event in events {
                     let input = state.input();
@@ -131,6 +143,11 @@ impl GameManager {
         }
         self.pending_inputs.clear();
         let dt: f32 = 1.0 / 120.0; // ~0.016
-        Physics::update(&mut self.states, dt, &mut self.event_queue);
+        Physics::update(
+            &mut self.states,
+            dt,
+            self.ball_holder,
+            &mut self.event_queue,
+        );
     }
 }

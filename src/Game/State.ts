@@ -20,7 +20,7 @@ export class State {
     public angle: number,
     public is_static: boolean,
     public kind: Kind,
-    public player_id: number | null,
+    public player_id: [number, number] | null = [42, 5],
     public team_id: number | null
   ) {}
 }

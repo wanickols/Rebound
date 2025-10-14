@@ -47,7 +47,7 @@ export class InputManager {
     if (!action) return;
 
     // Only trigger if state actually changes
-    this.sendActionToServer(0, action, {
+    this.sendActionToServer([0, 0], action, {
       Bool: pressed,
     });
   }
@@ -68,7 +68,7 @@ export class InputManager {
   }
 
   sendMouseToServer() {
-    this.sendActionToServer(0, "mouseMove", {
+    this.sendActionToServer([0, 0], "mouseMove", {
       Vec2: {
         x: this.lastMouse.x * this.scale,
         y: this.lastMouse.y * this.scale,
@@ -76,7 +76,7 @@ export class InputManager {
     });
   }
 
-  sendActionToServer(id: number, action: string, value: InputValue) {
+  sendActionToServer(id: [number, number], action: string, value: InputValue) {
     {
       invoke("input_event", { id, action, value }); // map key
     }

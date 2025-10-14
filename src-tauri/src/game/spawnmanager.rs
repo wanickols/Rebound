@@ -3,6 +3,7 @@ use crate::game::state::{Kind, State};
 pub struct SpawnManager {
     pub player_starts: Vec<(f32, f32)>,
     pub ball_start: Option<(f32, f32)>,
+    pub ball_index: Option<usize>,
 }
 
 impl SpawnManager {
@@ -10,17 +11,23 @@ impl SpawnManager {
         Self {
             player_starts: Vec::new(),
             ball_start: None,
+            ball_index: None,
         }
     }
 
     pub fn add_player(&mut self, states: &mut Vec<State>, x: f32, y: f32) {
-        states.push(State::new_player(x, y));
+        states.push(State::new_player(x, y, states.len()));
         self.player_starts.push((x, y));
     }
 
     pub fn add_ball(&mut self, states: &mut Vec<State>, x: f32, y: f32) {
         states.push(State::new_ball(x, y));
         self.ball_start = Some((x, y));
+        self.ball_index = Some(states.len() - 1);
+    }
+
+    pub fn get_ball_mut<'a>(&self, states: &'a mut Vec<State>) -> Option<&'a mut State> {
+        self.ball_index.map(move |i| &mut states[i])
     }
 
     pub fn spawn_states(&mut self, states: &mut Vec<State>) {
@@ -45,7 +52,7 @@ impl SpawnManager {
                     }
                 }
                 Kind::Player => {
-                    let idx = state.player_id.unwrap().0 as usize;
+                    let idx = state.get_player_id().unwrap().0 as usize;
                     let (px, py) = self.player_starts[idx];
                     state.x = px;
                     state.y = py;

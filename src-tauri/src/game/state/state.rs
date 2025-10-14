@@ -61,11 +61,11 @@ pub struct State {
     pub shape: Shape,
     pub mass: f32,
     pub is_static: bool,
+    pub is_enabled: bool,
     pub is_trigger: bool,
     pub friction: f32,
     pub restitution: f32,
     pub kind: Kind,
-    pub player_id: Option<PlayerId>,
     pub team_id: Option<u8>,
     pub player_controller: Option<PlayerController>,
 }
@@ -247,7 +247,7 @@ impl State {
         }
     }
 
-    fn handle_trigger_collision(&self, other: &State, events: &mut EventQueue) {
+    pub fn handle_trigger_collision(&self, other: &State, events: &mut EventQueue) {
         match (self.kind, other.kind) {
             (Kind::Goal, Kind::Ball) => self.trigger_score(events),
             _ => {}
@@ -261,11 +261,15 @@ impl State {
         });
     }
 
-    pub fn radius(&self) -> f32 {
-        match self.shape {
-            Shape::Circle { radius } => radius,
-            _ => 0.0,
+    pub fn set_enable(&mut self, enable: bool) {
+        self.is_enabled = enable;
+    }
+
+    pub fn get_player_id(&self) -> Option<PlayerId> {
+        if self.player_controller.is_some() {
+            return Some(self.player_controller.as_ref().unwrap().player_id);
         }
+        None
     }
 
     pub fn input(&mut self) -> &mut InputState {
@@ -284,11 +288,11 @@ impl State {
             angle: 0.0,
             mass: 1.0,
             is_static: false,
+            is_enabled: true,
             is_trigger: false,
             friction: 0.0,
             restitution: 0.5,
             kind: Kind::Ball,
-            player_id: None,
             team_id: None,
             player_controller: None,
         }
@@ -306,7 +310,7 @@ impl State {
         s
     }
 
-    pub fn new_player(x: f32, y: f32) -> Self {
+    pub fn new_player(x: f32, y: f32, index: usize) -> Self {
         let mut s = State::new();
         s.x = x;
         s.y = y;
@@ -315,8 +319,7 @@ impl State {
         s.friction = 0.3;
         s.restitution = 0.6;
         s.kind = Kind::Player;
-        s.player_id = Some(PlayerId::new());
-        s.player_controller = Some(PlayerController::new(50.0, 400.0));
+        s.player_controller = Some(PlayerController::new(50.0, 400.0, index));
         s
     }
 
@@ -329,6 +332,17 @@ impl State {
         s.friction = 0.2;
         s.restitution = 0.9;
         s.kind = Kind::Ball;
+        s
+    }
+
+    pub fn new_hitcircle(x: f32, y: f32, radius: f32, angle: f32) -> Self {
+        let mut s = State::new();
+        s.x = x;
+        s.y = y;
+        s.shape = Shape::Circle { radius };
+        s.angle = angle;
+        s.is_trigger = true;
+        s.is_static = true;
         s
     }
 

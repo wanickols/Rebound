@@ -1,27 +1,33 @@
 use crate::game::{
     eventqueue::EventQueue,
-    input::PlayerController,
-    state::{Shape, State},
+    state::{PlayerId, State},
+    util::Util,
 };
 
 pub struct Physics;
 
 impl Physics {
-    pub fn update(states: &mut Vec<State>, dt: f32, events: &mut EventQueue) {
+    pub fn update(
+        states: &mut Vec<State>,
+        dt: f32,
+        ball_holder: Option<PlayerId>,
+        events: &mut EventQueue,
+    ) {
         for i in 0..states.len() {
-            let s = &mut states[i];
-            if s.is_static {
+            if states[i].is_static || Physics::ball_handled(states, i, ball_holder) {
                 continue;
             }
 
+            let s = &mut states[i];
+
             if let Some(controller) = &mut s.player_controller {
-                let (x, y, vx, vy, angle) = controller.apply_input(s.x, s.y, s.vx, s.vy);
+                let (x, y, vx, vy, angle) = controller.apply_input(s.x, s.y, s.vx, s.vy, events);
 
                 s.x = x;
                 s.y = y;
                 s.vx = vx;
                 s.vy = vy;
-                if (angle.is_some()) {
+                if angle.is_some() {
                     s.angle = angle.unwrap();
                 }
             }
@@ -44,6 +50,25 @@ impl Physics {
             }
             states[i].update_position(dt);
         }
+    }
+
+    //Yeah prob not best
+    pub fn ball_handled(states: &mut [State], i: usize, ball_holder: Option<PlayerId>) -> bool {
+        if !states[i].is_enabled {
+            if let Some(holder) = ball_holder {
+                if holder.1 != i {
+                    let (s, holder_state) = Util::two_mut(states, i, holder.1);
+                    s.x = holder_state.x;
+                    s.y = holder_state.y;
+                } else {
+                    let s = &mut states[i];
+                    s.x = s.x;
+                    s.y = s.y;
+                }
+            }
+            return true; // ball handled
+        }
+        false // ball not handled
     }
 
     pub fn resolve_pair(a: &mut State, b: &mut State, nx: f32, ny: f32, overlap: f32) {

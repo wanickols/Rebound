@@ -10,12 +10,12 @@ use tauri::{Emitter, Manager};
 
 #[tauri::command]
 fn input_event(
-    id: u32,
+    id: (u32, usize),
     action: GameAction,
     value: InputValue,
     gm: tauri::State<Arc<Mutex<GameManager>>>,
 ) {
-    let player_id = PlayerId(id);
+    let player_id = PlayerId(id.0, id.1);
     let mut gm = gm.lock().unwrap();
     gm.set_input(player_id, action, value);
 }
