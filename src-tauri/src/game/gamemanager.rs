@@ -1,9 +1,12 @@
 use crate::game::eventqueue::{EventQueue, GameEvent};
-use crate::game::input::{GameAction, GameActionEvent, InputValue, PlayerController};
+use crate::game::input::{
+    playercontroller, GameAction, GameActionEvent, InputValue, PlayerController,
+};
 use crate::game::physics::Physics;
 use crate::game::scoremanager::{ScoreManager, Team};
 use crate::game::spawnmanager::SpawnManager;
 use crate::game::state::{PlayerId, State};
+use crate::game::util::Util;
 use std::collections::HashMap;
 
 use tauri::window::Color;
@@ -15,11 +18,12 @@ pub struct GameManager {
     pub app: AppHandle,
     pub width: f32,
     pub height: f32,
-    pub ball_holder: Option<PlayerId>,
     pub event_queue: EventQueue,
     pub score_manager: ScoreManager,
     pub spawn_manager: SpawnManager,
 }
+
+pub const GRAB_RADIUS: f32 = 32.0;
 
 impl GameManager {
     pub fn new(app: &AppHandle, width: f32, height: f32) -> Self {
@@ -44,7 +48,6 @@ impl GameManager {
             pending_inputs: HashMap::new(),
             width,
             height,
-            ball_holder: None,
             event_queue: EventQueue::new(),
             score_manager: score_manager,
             spawn_manager: SpawnManager::new(),
@@ -107,13 +110,39 @@ impl GameManager {
                     self.score_manager.reset();
                 }
                 GameEvent::TryGrab { player_id } => {
-                    if self.ball_holder.is_some() {
-                        return;
-                    }
+                    if let Some(ball_idx) = self.spawn_manager.get_ball_index() {
+                        let (ball, player) = Util::two_mut(&mut self.states, ball_idx, player_id.1);
+                        if (ball.held_by.is_some()) {
+                            return;
+                        }
+                        let dx = ball.x - player.x;
+                        let dy = ball.y - player.y;
 
-                    if let Some(ball) = self.spawn_manager.get_ball_mut(&mut self.states) {
-                        ball.set_enable(false);
-                        self.ball_holder = Some(player_id);
+                        if dx * dx + dy * dy < GRAB_RADIUS.powi(2) {
+                            ball.held_by = Some(player_id);
+                        }
+                    }
+                }
+                GameEvent::Shoot { player_id } => {
+                    if let Some(ball_idx) = self.spawn_manager.get_ball_index() {
+                        let (ball, player) = Util::two_mut(&mut self.states, ball_idx, player_id.1);
+
+                        // Only shoot if this player is actually holding the ball
+                        if ball.held_by != Some(player_id) {
+                            return; // not holding, can't shoot
+                        }
+
+                        // Optional: check grab radius as a sanity check
+                        let dx = ball.x - player.x;
+                        let dy = ball.y - player.y;
+                        if dx * dx + dy * dy > GRAB_RADIUS.powi(2) {
+                            return; // too far away, can't shoot
+                        }
+
+                        // Release the ball and apply impulse
+                        ball.held_by = None;
+                        player.set_holding(false);
+                        Physics::apply_impulse(ball, player.angle, 1000.0); // tune power as needed
                     }
                 }
             }
@@ -143,11 +172,6 @@ impl GameManager {
         }
         self.pending_inputs.clear();
         let dt: f32 = 1.0 / 120.0; // ~0.016
-        Physics::update(
-            &mut self.states,
-            dt,
-            self.ball_holder,
-            &mut self.event_queue,
-        );
+        Physics::update(&mut self.states, dt, &mut self.event_queue);
     }
 }

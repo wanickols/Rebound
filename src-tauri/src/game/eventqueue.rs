@@ -5,6 +5,7 @@ pub enum GameEvent {
     GoalScored { team_id: u8 },
     ResetScore,
     TryGrab { player_id: PlayerId },
+    Shoot { player_id: PlayerId },
 }
 
 #[derive(Default)]

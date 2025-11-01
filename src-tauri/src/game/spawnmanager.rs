@@ -16,7 +16,14 @@ impl SpawnManager {
     }
 
     pub fn add_player(&mut self, states: &mut Vec<State>, x: f32, y: f32) {
-        states.push(State::new_player(x, y, states.len()));
+        let player = State::new_player(x, y, states.len());
+        if let Some(id) = player.get_player_id() {
+            println!("Added player with ID: {}", id.0);
+        } else {
+            println!("Player has no ID!");
+        }
+
+        states.push(player);
         self.player_starts.push((x, y));
     }
 
@@ -30,8 +37,12 @@ impl SpawnManager {
         self.ball_index.map(move |i| &mut states[i])
     }
 
+    pub fn get_ball_index(&self) -> Option<usize> {
+        return self.ball_index;
+    }
+
     pub fn spawn_states(&mut self, states: &mut Vec<State>) {
-        self.add_player(states, 10.0, 50.0);
+        self.add_player(states, 100.0, 50.0);
         self.add_ball(states, 100.0, 50.0);
         self.add_player(states, 200.0, 50.0);
     }
@@ -47,6 +58,7 @@ impl SpawnManager {
                     if let Some((bx, by)) = self.ball_start {
                         state.x = bx;
                         state.y = by;
+                        state.held_by = None;
                         state.vx = 0.0;
                         state.vy = 0.0;
                     }
@@ -56,6 +68,7 @@ impl SpawnManager {
                     let (px, py) = self.player_starts[idx];
                     state.x = px;
                     state.y = py;
+                    state.held_by = None;
                     state.vx = 0.0;
                     state.vy = 0.0;
                 }

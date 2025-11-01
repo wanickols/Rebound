@@ -8,6 +8,8 @@ pub struct PlayerController {
     max_speed: f32,
     action_toggle: bool,
     mouse_pos: (f32, f32),
+    prev_action: bool,
+    pub is_holding: bool,
     pub player_id: PlayerId,
     pub input: InputState,
 }
@@ -18,6 +20,8 @@ impl PlayerController {
             accel,
             max_speed,
             action_toggle: false,
+            is_holding: false,
+            prev_action: false,
             mouse_pos: (0.0, 0.0),
             input: InputState::new(),
             player_id: PlayerId::new(index),
@@ -57,7 +61,13 @@ impl PlayerController {
         }
 
         if self.input.action {
-            self.handle_action(events);
+            if (self.input.action != self.prev_action) {
+                self.prev_action = self.input.action;
+
+                self.handle_action(events);
+            }
+        } else {
+            self.prev_action = false;
         }
 
         // apply acceleration to velocity
@@ -78,7 +88,9 @@ impl PlayerController {
                 player_id: self.player_id,
             });
         } else {
-            //shoot
+            events.push(GameEvent::Shoot {
+                player_id: self.player_id,
+            });
         }
     }
 

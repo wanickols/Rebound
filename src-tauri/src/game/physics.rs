@@ -1,5 +1,6 @@
 use crate::game::{
-    eventqueue::EventQueue,
+    eventqueue::{self, EventQueue},
+    input::playercontroller,
     state::{PlayerId, State},
     util::Util,
 };
@@ -7,14 +8,9 @@ use crate::game::{
 pub struct Physics;
 
 impl Physics {
-    pub fn update(
-        states: &mut Vec<State>,
-        dt: f32,
-        ball_holder: Option<PlayerId>,
-        events: &mut EventQueue,
-    ) {
+    pub fn update(states: &mut Vec<State>, dt: f32, events: &mut EventQueue) {
         for i in 0..states.len() {
-            if states[i].is_static || Physics::ball_handled(states, i, ball_holder) {
+            if states[i].is_static || Physics::update_held_object(states, i, dt, events) {
                 continue;
             }
 
@@ -42,6 +38,12 @@ impl Physics {
                     continue;
                 }
 
+                if states[j].held_by.is_some() {
+                    if (states[i].is_holding()) {
+                        continue;
+                    }
+                }
+
                 if !states[i].check_collision_predicted(&states[j], next_x, next_y) {
                     continue;
                 }
@@ -52,23 +54,66 @@ impl Physics {
         }
     }
 
+    pub fn apply_impulse(state: &mut State, angle: f32, power: f32) {
+        state.vx += angle.cos() * power;
+        state.vy += angle.sin() * power;
+    }
+
     //Yeah prob not best
-    pub fn ball_handled(states: &mut [State], i: usize, ball_holder: Option<PlayerId>) -> bool {
-        if !states[i].is_enabled {
-            if let Some(holder) = ball_holder {
-                if holder.1 != i {
-                    let (s, holder_state) = Util::two_mut(states, i, holder.1);
-                    s.x = holder_state.x;
-                    s.y = holder_state.y;
-                } else {
-                    let s = &mut states[i];
-                    s.x = s.x;
-                    s.y = s.y;
+    pub fn update_held_object(
+        states: &mut Vec<State>,
+        i: usize,
+        dt: f32,
+        events: &mut EventQueue,
+    ) -> bool {
+        if let Some(holder_id) = states[i].held_by {
+            let (held, holder) = Util::two_mut(states, i, holder_id.1);
+
+            let max_distance = 40.0;
+            let hold_distance = 20.0; // target in front of player
+            let follow_strength = 0.2;
+            let velocity_damping = 0.6;
+
+            // compute target position in front of player
+            let target_x = holder.x + holder.angle.cos() * hold_distance;
+            let target_y = holder.y + holder.angle.sin() * hold_distance;
+
+            // calculate distance to ball
+            let dx = target_x - held.x;
+            let dy = target_y - held.y;
+            let distance_sq = dx * dx + dy * dy;
+
+            // if too far, drop the ball
+            if distance_sq > max_distance * max_distance {
+                held.held_by = None; // drop
+                holder.set_holding(false);
+                return false;
+            }
+
+            // smooth follow
+            held.x += dx * follow_strength;
+            held.y += dy * follow_strength;
+
+            // damp velocity
+            held.vx *= velocity_damping;
+            held.vy *= velocity_damping;
+
+            let (next_x, next_y) = held.predict_position(dt);
+
+            // Check triggers (goal zones, sensors, etc.)
+            for j in 0..states.len() {
+                if j != i && j != holder_id.1 {
+                    if !states[i].check_collision_predicted(&states[j], next_x, next_y) {
+                        continue;
+                    }
+
+                    State::handle_pure_trigger(states, i, j, events);
                 }
             }
-            return true; // ball handled
+
+            return true;
         }
-        false // ball not handled
+        false
     }
 
     pub fn resolve_pair(a: &mut State, b: &mut State, nx: f32, ny: f32, overlap: f32) {

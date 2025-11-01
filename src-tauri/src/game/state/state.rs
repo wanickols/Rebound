@@ -67,6 +67,7 @@ pub struct State {
     pub restitution: f32,
     pub kind: Kind,
     pub team_id: Option<u8>,
+    pub held_by: Option<PlayerId>,
     pub player_controller: Option<PlayerController>,
 }
 
@@ -168,6 +169,33 @@ impl State {
         }
     }
 
+    pub fn handle_pure_trigger(
+        states: &mut Vec<State>,
+        i: usize,
+        j: usize,
+        events: &mut EventQueue,
+    ) {
+        let (a, b) = Util::two_mut(states, i, j);
+
+        match (&a.shape, &b.shape) {
+            (Shape::Circle { .. }, Shape::Circle { .. }) => {
+                if let Some((nx, ny, overlap)) = State::find_overlap(a, b) {
+                    (nx, ny, overlap)
+                } else {
+                    return; // no overlap
+                }
+            }
+            _ => a.compute_min_axis_overlap(b),
+        };
+
+        if a.is_trigger {
+            a.handle_trigger_collision(b, events);
+        }
+        if b.is_trigger {
+            b.handle_trigger_collision(a, events);
+        }
+    }
+
     //Helper Functions
     fn bounds(&self) -> (f32, f32, f32, f32) {
         match &self.shape {
@@ -265,6 +293,18 @@ impl State {
         self.is_enabled = enable;
     }
 
+    pub fn set_holding(&mut self, holding: bool) {
+        if let Some(pc) = &mut self.player_controller {
+            pc.is_holding = holding;
+        }
+    }
+
+    pub fn is_holding(&self) -> bool {
+        self.player_controller
+            .as_ref()
+            .map_or(false, |pc| pc.is_holding)
+    }
+
     pub fn get_player_id(&self) -> Option<PlayerId> {
         if self.player_controller.is_some() {
             return Some(self.player_controller.as_ref().unwrap().player_id);
@@ -294,6 +334,7 @@ impl State {
             restitution: 0.5,
             kind: Kind::Ball,
             team_id: None,
+            held_by: None,
             player_controller: None,
         }
     }
