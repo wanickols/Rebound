@@ -1,4 +1,4 @@
-use crate::game::state::{Kind, State};
+use crate::game::state::{self, Kind, State};
 
 pub struct SpawnManager {
     pub player_starts: Vec<(f32, f32)>,
@@ -33,6 +33,10 @@ impl SpawnManager {
         self.ball_index = Some(states.len() - 1);
     }
 
+    fn add_goal(&mut self, states: &mut Vec<State>, x: f32, y: f32, team_id: u8) {
+        states.push(State::new_goal(x, y, 30.0, 60.0, team_id));
+    }
+
     pub fn get_ball_mut<'a>(&self, states: &'a mut Vec<State>) -> Option<&'a mut State> {
         self.ball_index.map(move |i| &mut states[i])
     }
@@ -45,6 +49,10 @@ impl SpawnManager {
         self.add_player(states, 100.0, 50.0);
         self.add_ball(states, 100.0, 50.0);
         self.add_player(states, 200.0, 50.0);
+
+        //Goals
+        self.add_goal(states, 0.0,  60.0, 0);
+        self.add_goal(states, 290.0, 60.0, 1);
     }
 
     pub fn reset_states(&self, states: &mut Vec<State>) {

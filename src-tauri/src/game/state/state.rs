@@ -357,10 +357,10 @@ impl State {
         s.y = y;
         s.shape = Shape::Circle { radius: 10.0 };
         s.mass = 100.0;
-        s.friction = 0.3;
+        s.friction = 20.0;
         s.restitution = 0.6;
         s.kind = Kind::Player;
-        s.player_controller = Some(PlayerController::new(50.0, 400.0, index));
+        s.player_controller = Some(PlayerController::new(75.0, 400.0, index));
         s
     }
 
@@ -370,7 +370,7 @@ impl State {
         s.y = y;
         s.shape = Shape::Circle { radius: 6.0 };
         s.mass = 1.0;
-        s.friction = 0.2;
+        s.friction = 8.0;
         s.restitution = 0.9;
         s.kind = Kind::Ball;
         s

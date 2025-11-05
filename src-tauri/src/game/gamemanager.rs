@@ -63,8 +63,7 @@ impl GameManager {
     fn create_borders(&mut self) {
         let thickness = 10.0; // wall thickness
 
-        self.states.push(State::new_goal(0.0, 50.0, 40.0, 100.0, 0));
-
+       
         // Top wall
         self.states
             .push(State::new_wall(0.0, -thickness, self.width, thickness));
