@@ -3,7 +3,7 @@ import { useRouter } from "vue-router";
 const router = useRouter();
 
 function onPlay() {
-  router.push("/game");
+  router.push("/gameSetup");
 }
 
 function onQuit() {
