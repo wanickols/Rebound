@@ -92,7 +92,14 @@ impl GameManager {
     pub fn set_game_settings(&mut self, player_count: u8, target_score: u8) {
         self.spawn_manager
             .set_game_settings(player_count, target_score);
+    }
+
+    pub fn start_game(&mut self) {
         self.spawn_manager.spawn_states(&mut self.states);
+    }
+
+    pub fn try_get_new_player(&mut self) -> Option<PlayerId> {
+        return self.spawn_manager.add_single_player(&mut self.states);
     }
 
     pub fn update(&mut self) {
@@ -156,14 +163,10 @@ impl GameManager {
                 for event in events {
                     let input = state.input();
                     match event.action {
-                        GameAction::Up => input.up = event.value.as_bool(),
-                        GameAction::Down => input.down = event.value.as_bool(),
-                        GameAction::Left => input.left = event.value.as_bool(),
-                        GameAction::Right => input.right = event.value.as_bool(),
+                        GameAction::Move => input.move_axis = event.value.as_vec2(),
                         GameAction::Action => input.action = event.value.as_bool(),
-                        GameAction::MouseMove => {
-                            input.mouse_pos = event.value.as_vec2();
-                        }
+                        GameAction::Aim => input.mouse_pos = event.value.as_vec2(),
+                        GameAction::Look => input.look_pos = event.value.as_vec2(),
                     }
                 }
             }

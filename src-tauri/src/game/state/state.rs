@@ -3,7 +3,6 @@ pub mod playerid;
 pub mod renderstate;
 
 pub use playerid::PlayerId;
-pub use renderstate::RenderState;
 
 use serde::{Deserialize, Serialize};
 
@@ -14,23 +13,19 @@ use crate::game::util::Util;
 
 #[derive(Default, Clone, Deserialize)]
 pub struct InputState {
-    pub up: bool,
-    pub down: bool,
-    pub left: bool,
-    pub right: bool,
+    pub move_axis: (f32, f32),
     pub action: bool,
     pub mouse_pos: (f32, f32),
+    pub look_pos: (f32, f32),
 }
 
 impl InputState {
     pub fn new() -> Self {
         InputState {
-            up: false,
-            down: false,
-            left: false,
-            right: false,
+            move_axis: (0.0, 0.0),
             action: false,
             mouse_pos: (0.0, 0.0),
+            look_pos: (0.0, 0.0),
         }
     }
 }

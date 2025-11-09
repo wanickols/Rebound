@@ -5,19 +5,17 @@ import { State } from "../State";
 
 export class GameRenderer {
   private ctx: CanvasRenderingContext2D;
-  private width: number;
-  private height: number;
+  private canvas: HTMLCanvasElement;
 
-  constructor(ctx: CanvasRenderingContext2D, width: number, height: number) {
+  constructor(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) {
     this.ctx = ctx;
-    this.width = width;
-    this.height = height;
+    this.canvas = canvas;
   }
 
   updateState(states: State[]) {
     const scale = this.getScale();
-    const offsetX = (this.width - GAME_WIDTH * scale) / 2;
-    const offsetY = (this.height - GAME_HEIGHT * scale) / 2;
+    const offsetX = (this.canvas.width - GAME_WIDTH * scale) / 2;
+    const offsetY = (this.canvas.height - GAME_HEIGHT * scale) / 2;
 
     this.clear();
 
@@ -27,8 +25,8 @@ export class GameRenderer {
   }
 
   getScale() {
-    const canvasWidth = this.width; // already set to canvas.value.width
-    const canvasHeight = this.height; // already set to canvas.value.height
+    const canvasWidth = this.canvas.width; // already set to canvas.value.width
+    const canvasHeight = this.canvas.height; // already set to canvas.value.height
     const scaleX = canvasWidth / GAME_WIDTH;
     const scaleY = canvasHeight / GAME_HEIGHT;
 
@@ -91,25 +89,8 @@ export class GameRenderer {
     }
   }
 
-  resizeCanvas(canvas: HTMLCanvasElement) {
-    const { innerWidth: w, innerHeight: h } = window;
-    const aspect = 16 / 9;
-
-    let scale;
-    if (w / h > aspect) {
-      // window is wider than 16:9 -> scale based on height
-      scale = h / 1080;
-    } else {
-      // window is taller than 16:9 -> scale based on width
-      scale = w / 1920;
-    }
-
-    canvas.style.width = `${1920 * scale}px`;
-    canvas.style.height = `${1080 * scale}px`;
-  }
-
   private clear() {
     this.ctx.fillStyle = "black";
-    this.ctx.fillRect(0, 0, this.width, this.height);
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
   }
 }

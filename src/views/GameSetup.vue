@@ -15,6 +15,7 @@ const onPlay = async () => {
     targetScore: scoreCount.value,
   });
   console.log(result);
+
   router.push("/game");
 };
 

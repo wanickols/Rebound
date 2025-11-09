@@ -7,12 +7,10 @@ use serde::{Deserialize, Serialize};
 #[derive(Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[serde(rename_all = "camelCase")]
 pub enum GameAction {
-    Up,
-    Down,
-    Left,
-    Right,
+    Move,
     Action,
-    MouseMove,
+    Aim,  //mouse
+    Look, //controller
 }
 
 pub struct GameActionEvent {

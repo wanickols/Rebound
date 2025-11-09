@@ -17,7 +17,7 @@ const inputManager = new InputManager();
 onMounted(async () => {
   function gameLoop() {
     const now = performance.now();
-    inputManager.update(now);
+    //inputManager.update(now);
     requestAnimationFrame(gameLoop);
   }
   gameLoop();

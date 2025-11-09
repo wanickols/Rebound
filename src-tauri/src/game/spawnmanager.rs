@@ -1,4 +1,14 @@
-use crate::game::state::{self, Kind, State};
+use crate::game::state::{self, Kind, PlayerId, State};
+pub const PLAYER_POSITIONS: [(f32, f32); 8] = [
+    (50.0, 50.0),
+    (270.0, 50.0),
+    (50.0, 130.0),
+    (270.0, 130.0),
+    (160.0, 50.0),
+    (160.0, 130.0),
+    (90.0, 90.0),
+    (230.0, 90.0),
+];
 
 pub struct SpawnManager {
     player_starts: Vec<(f32, f32)>,
@@ -20,25 +30,21 @@ impl SpawnManager {
         }
     }
 
-    ///Public Functions
-    pub fn spawn_states(&mut self, states: &mut Vec<State>) {
-        // Hardcoded positions for up to 8 players
-        let player_positions = [
-            (50.0, 50.0),
-            (270.0, 50.0),
-            (50.0, 130.0),
-            (270.0, 130.0),
-            (160.0, 50.0),
-            (160.0, 130.0),
-            (90.0, 90.0),
-            (230.0, 90.0),
-        ];
-
-        for i in 0..self.player_count.min(8) as usize {
-            let (x, y) = player_positions[i];
-            self.add_player(states, x, y);
+    pub fn add_single_player(&mut self, states: &mut Vec<State>) -> Option<PlayerId> {
+        let id = self.player_count as usize;
+        if id >= PLAYER_POSITIONS.len() {
+            println!("Max players reached!");
+            return None;
         }
 
+        let (x, y) = PLAYER_POSITIONS[id];
+        let player_id = self.add_player(states, x, y)?;
+        self.player_count += 1;
+        Some(player_id)
+    }
+
+    ///Public Functions
+    pub fn spawn_states(&mut self, states: &mut Vec<State>) {
         // Ball
         self.add_ball(states, 160.0, 90.0); // center
 
@@ -79,16 +85,18 @@ impl SpawnManager {
 
     ///Private
     //Add Functions:
-    fn add_player(&mut self, states: &mut Vec<State>, x: f32, y: f32) {
+    pub fn add_player(&mut self, states: &mut Vec<State>, x: f32, y: f32) -> Option<PlayerId> {
         let player = State::new_player(x, y, states.len());
+
         if let Some(id) = player.get_player_id() {
             println!("Added player with ID: {} {}", id.0, id.1);
+            states.push(player);
+            self.player_starts.push((x, y));
+            Some(id)
         } else {
             println!("Player has no ID!");
+            None
         }
-
-        states.push(player);
-        self.player_starts.push((x, y));
     }
 
     fn add_ball(&mut self, states: &mut Vec<State>, x: f32, y: f32) {

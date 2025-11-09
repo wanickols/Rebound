@@ -28,6 +28,7 @@ impl PlayerController {
         }
     }
 
+    // returns (new_x, new_y, new_vx, new_vy, new_angle)
     pub fn apply_input(
         &mut self,
         x: f32,
@@ -36,30 +37,17 @@ impl PlayerController {
         vy: f32,
         events: &mut EventQueue,
     ) -> (f32, f32, f32, f32, Option<f32>) {
-        // returns (new_x, new_y, new_vx, new_vy, new_angle)
+        //handle movement
+        let ax = self.input.move_axis.0;
+        let ay = self.input.move_axis.1;
+        let mut angle = self.handle_look(self.input.look_pos);
 
-        let mut ax = 0.0;
-        let mut ay = 0.0;
-        let mut angle = None;
-
-        // Directional
-        if self.input.up {
-            ay -= 1.0;
-        }
-        if self.input.down {
-            ay += 1.0;
-        }
-        if self.input.left {
-            ax -= 1.0;
-        }
-        if self.input.right {
-            ax += 1.0;
+        //If look does nothing, see if aiming is a thing
+        if angle.is_none() {
+            angle = self.handle_aim((x, y))
         }
 
-        if let Some(a) = self.handle_mouse((x, y)) {
-            angle = Some(a);
-        }
-
+        //handle actions
         if self.input.action {
             if (self.input.action != self.prev_action) {
                 self.prev_action = self.input.action;
@@ -94,28 +82,42 @@ impl PlayerController {
         }
     }
 
-    fn try_grab(&mut self, x: f32, y: f32, radius: f32, angle: f32, ball: &mut State) {
-        let s = State::new_hitcircle(x, y, radius, angle);
-        if let Some((nx, ny, overlap)) = State::find_overlap(&s, ball) {
-            ball.set_enable(false);
-            ball.x = x;
-            ball.y = y;
-        }
-    }
-
-    fn handle_mouse(&mut self, pos: (f32, f32)) -> Option<f32> {
-        if self.input.mouse_pos == self.mouse_pos || self.input.mouse_pos == (0.0, 0.0) {
+    fn handle_aim(&mut self, player_pos: (f32, f32)) -> Option<f32> {
+        let mouse_pos = self.input.mouse_pos;
+        if mouse_pos == self.mouse_pos {
             return None;
         }
 
-        self.mouse_pos = self.input.mouse_pos;
+        let dx = mouse_pos.0 - player_pos.0;
+        let dy = mouse_pos.1 - player_pos.1;
+        let angle = dy.atan2(dx);
 
-        let delta = (self.mouse_pos.0 - pos.0, self.mouse_pos.1 - pos.1);
-        let mut angle = delta.1.atan2(delta.0);
-        if angle < 0.0 {
-            angle += std::f32::consts::TAU; // TAU = 2π
+        self.mouse_pos = mouse_pos;
+        println!(
+            "[AIM] player=({:.2}, {:.2}) mouse=({:.2}, {:.2}) -> angle={:.3} rad ({:.1}°)",
+            player_pos.0,
+            player_pos.1,
+            mouse_pos.0,
+            mouse_pos.1,
+            angle,
+            angle.to_degrees()
+        );
+
+        Some(angle)
+    }
+
+    fn handle_look(&mut self, dir: (f32, f32)) -> Option<f32> {
+        if dir.0 != 0.0 || dir.1 != 0.0 {
+            let angle = dir.1.atan2(dir.0);
+            println!(
+                "[LOOK] dir=({:.2}, {:.2}) -> angle={:.3} rad ({:.1}°)",
+                dir.0,
+                dir.1,
+                angle,
+                angle.to_degrees()
+            );
+            return Some(angle);
         }
-        println!("Angle (radians): {:.3}", angle);
-        return Some(angle);
+        None
     }
 }
