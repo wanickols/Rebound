@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, onMounted } from "vue";
+import { ref, watchEffect, onMounted } from "vue";
 
 const props = defineProps({
   modelValue: {
@@ -28,14 +28,11 @@ const emit = defineEmits(["update:modelValue"]);
 const localValue = ref(props.defaultValue);
 
 // Sync localValue if parent explicitly sets v-model
-watch(
-  () => props.modelValue,
-  (val) => {
-    if (val !== null && val !== localValue.value) {
-      localValue.value = val;
-    }
+watchEffect(() => {
+  if (props.modelValue !== null && props.modelValue !== undefined) {
+    localValue.value = props.modelValue;
   }
-);
+});
 
 const update = (val) => {
   if (val >= props.min && val <= props.max) {
@@ -46,9 +43,14 @@ const update = (val) => {
 
 // Optional: ensure modelValue is initialized on mount if parent doesn't provide
 onMounted(() => {
-  if (props.modelValue === null) {
-    emit("update:modelValue", localValue.value);
-  }
+  onMounted(() => {
+    if (props.modelValue === null || props.modelValue === undefined) {
+      emit("update:modelValue", localValue.value);
+    } else {
+      // Make localValue match modelValue from parent
+      localValue.value = props.modelValue;
+    }
+  });
 });
 </script>
 

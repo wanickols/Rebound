@@ -355,7 +355,7 @@ impl State {
         let mut s = State::new();
         s.x = x;
         s.y = y;
-        s.shape = Shape::Circle { radius: 10.0 };
+        s.shape = Shape::Circle { radius: 5.0 };
         s.mass = 100.0;
         s.friction = 20.0;
         s.restitution = 0.6;
@@ -368,7 +368,7 @@ impl State {
         let mut s = State::new();
         s.x = x;
         s.y = y;
-        s.shape = Shape::Circle { radius: 6.0 };
+        s.shape = Shape::Circle { radius: 3.0 };
         s.mass = 1.0;
         s.friction = 8.0;
         s.restitution = 0.9;

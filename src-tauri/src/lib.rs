@@ -20,6 +20,21 @@ fn input_event(
     gm.set_input(player_id, action, value);
 }
 
+#[tauri::command]
+fn set_game_settings(
+    player_count: u8,
+    target_score: u8,
+    gm: tauri::State<Arc<Mutex<GameManager>>>,
+) {
+    println!(
+        "Got the player count: {} and target score: {}",
+        player_count, target_score
+    );
+
+    let mut gm = gm.lock().unwrap();
+    gm.set_game_settings(player_count, target_score);
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -31,7 +46,7 @@ pub fn run() {
             start_game_loop(gm_for_loop);
             Ok(())
         }) // makes GameManager available to all commands
-        .invoke_handler(tauri::generate_handler![input_event,])
+        .invoke_handler(tauri::generate_handler![input_event, set_game_settings])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

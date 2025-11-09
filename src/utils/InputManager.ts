@@ -37,6 +37,19 @@ export class InputManager {
   private scale = 1.0;
 
   constructor() {
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        window.history.back(); // or your game's back navigation function
+        return;
+      }
+      this.handleKey(e.key, true);
+    });
+
+    window.addEventListener("keyup", (e) => {
+      if (e.key === "Escape") return;
+      this.handleKey(e.key, false);
+    });
+
     window.addEventListener("keydown", (e) => this.handleKey(e.key, true));
     window.addEventListener("keyup", (e) => this.handleKey(e.key, false));
   }
@@ -47,7 +60,7 @@ export class InputManager {
     if (!action) return;
 
     // Only trigger if state actually changes
-    this.sendActionToServer([0, 0], action, {
+    this.sendActionToServer([5, 9], action, {
       Bool: pressed,
     });
   }
@@ -68,7 +81,7 @@ export class InputManager {
   }
 
   sendMouseToServer() {
-    this.sendActionToServer([0, 0], "mouseMove", {
+    this.sendActionToServer([0, 4], "mouseMove", {
       Vec2: {
         x: this.lastMouse.x * this.scale,
         y: this.lastMouse.y * this.scale,

@@ -53,8 +53,6 @@ impl GameManager {
             spawn_manager: SpawnManager::new(),
         };
 
-        gm.spawn_manager.spawn_states(&mut gm.states);
-
         gm.create_borders();
 
         gm
@@ -63,7 +61,6 @@ impl GameManager {
     fn create_borders(&mut self) {
         let thickness = 10.0; // wall thickness
 
-       
         // Top wall
         self.states
             .push(State::new_wall(0.0, -thickness, self.width, thickness));
@@ -92,8 +89,10 @@ impl GameManager {
             });
     }
 
-    pub fn add_state(&mut self, state: State) {
-        self.states.push(state);
+    pub fn set_game_settings(&mut self, player_count: u8, target_score: u8) {
+        self.spawn_manager
+            .set_game_settings(player_count, target_score);
+        self.spawn_manager.spawn_states(&mut self.states);
     }
 
     pub fn update(&mut self) {

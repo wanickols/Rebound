@@ -2,13 +2,19 @@
 import { ref } from "vue";
 import { useRouter } from "vue-router";
 import NumberSelector from "@/components/NumberSelector.vue";
+import { invoke } from "@tauri-apps/api/core";
 
 const router = useRouter();
 const playerCount = ref(1);
 const scoreCount = ref(1);
 
-const onPlay = () => {
-  console.log(`Starting game with ${playerCount.value} players`);
+const onPlay = async () => {
+  console.log("Sending settings:", playerCount.value, scoreCount.value);
+  const result = await invoke("set_game_settings", {
+    playerCount: playerCount.value,
+    targetScore: scoreCount.value,
+  });
+  console.log(result);
   router.push("/game");
 };
 
@@ -26,7 +32,7 @@ const goBack = () => {
         <NumberSelector
           v-model="playerCount"
           :min="1"
-          :default-value="2"
+          :default-value="5"
           :max="8"
           label="Players:"
           class="mb-6"
