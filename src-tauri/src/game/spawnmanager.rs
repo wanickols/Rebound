@@ -43,6 +43,10 @@ impl SpawnManager {
         Some(player_id)
     }
 
+    pub fn remove_player(&mut self, states: &mut Vec<State>, player_id: u32) {
+        states.retain(|s| s.get_player_id().map_or(true, |id| id.0 != player_id));
+    }
+
     ///Public Functions
     pub fn spawn_states(&mut self, states: &mut Vec<State>) {
         // Ball
