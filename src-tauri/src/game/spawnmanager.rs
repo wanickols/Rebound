@@ -55,8 +55,7 @@ impl SpawnManager {
     }
 
     pub fn remove_all(&mut self, states: &mut Vec<State>) {
-        states.clear();
-        self.curr_player_count = 0;
+        states.truncate(self.curr_player_count as usize);
         self.player_count = 1;
         self.ball_index = None;
     }
