@@ -1,6 +1,6 @@
 export class GamePhase {
   constructor(
-    public type: "Waiting" | "Playing" | "Countdown",
+    public type: "Waiting" | "Playing" | "Countdown" | "GameOver",
     public time_left: number | null = null
   ) {}
 
@@ -9,6 +9,7 @@ export class GamePhase {
     if (typeof obj === "string") {
       if (obj === "Waiting") return new GamePhase("Waiting");
       if (obj === "Playing") return new GamePhase("Playing");
+      if (obj === "GameOver") return new GamePhase("GameOver");
       throw new Error(`Unknown GamePhase string: ${obj}`);
     }
 

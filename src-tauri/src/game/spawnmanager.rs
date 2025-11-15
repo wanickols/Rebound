@@ -1,3 +1,5 @@
+use std::ops::Index;
+
 use crate::game::state::{self, Kind, PlayerId, State};
 pub const PLAYER_POSITIONS: [(f32, f32); 8] = [
     (50.0, 50.0),
@@ -15,46 +17,76 @@ pub struct SpawnManager {
     ball_start: Option<(f32, f32)>,
     ball_index: Option<usize>,
     player_count: u8,
-    target_score: u8,
+    curr_player_count: u8,
+    pub width: f32,
+    pub height: f32,
 }
 
 impl SpawnManager {
     //Constructor
-    pub fn new() -> Self {
+    pub fn new(width: f32, height: f32) -> Self {
         Self {
             player_starts: Vec::new(),
             ball_start: None,
             ball_index: None,
             player_count: 1,
-            target_score: 1,
+            curr_player_count: 0,
+            width,
+            height,
         }
     }
 
     pub fn add_single_player(&mut self, states: &mut Vec<State>) -> Option<PlayerId> {
-        let id = self.player_count as usize;
-        if id >= PLAYER_POSITIONS.len() {
+        let id = self.curr_player_count;
+        if id >= self.player_count {
             println!("Max players reached!");
             return None;
         }
 
-        let (x, y) = PLAYER_POSITIONS[id];
+        let (x, y) = PLAYER_POSITIONS[id as usize];
         let player_id = self.add_player(states, x, y)?;
-        self.player_count += 1;
+        self.curr_player_count += 1;
         Some(player_id)
     }
 
     pub fn remove_player(&mut self, states: &mut Vec<State>, player_id: u32) {
         states.retain(|s| s.get_player_id().map_or(true, |id| id.0 != player_id));
+        self.curr_player_count -= 1;
+    }
+
+    pub fn remove_all(&mut self, states: &mut Vec<State>) {
+        states.clear();
+        self.curr_player_count = 0;
+        self.player_count = 1;
+        self.ball_index = None;
     }
 
     ///Public Functions
     pub fn spawn_states(&mut self, states: &mut Vec<State>) {
+        //Borders
+        self.create_borders(states);
         // Ball
         self.add_ball(states, 160.0, 90.0); // center
 
         // Goals
         self.add_goal(states, 0.0, 60.0, 0);
         self.add_goal(states, 290.0, 60.0, 1);
+    }
+
+    fn create_borders(&mut self, states: &mut Vec<State>) {
+        let thickness = 10.0; // wall thickness
+
+        // Top wall
+        states.push(State::new_wall(0.0, -thickness, self.width, thickness));
+
+        // Bottom wall
+        states.push(State::new_wall(0.0, self.height, self.width, thickness));
+
+        // Left wall
+        states.push(State::new_wall(-thickness, 0.0, thickness, self.height));
+
+        // Right wall
+        states.push(State::new_wall(self.width, 0.0, thickness, self.height));
     }
 
     pub fn reset_states(&self, states: &mut Vec<State>) {
@@ -114,9 +146,8 @@ impl SpawnManager {
     }
 
     ///Getters and Setters
-    pub fn set_game_settings(&mut self, player_count: u8, target_score: u8) {
+    pub fn set_player_count(&mut self, player_count: u8) {
         self.player_count = player_count;
-        self.target_score = target_score;
     }
 
     pub fn get_ball_index(&self) -> Option<usize> {

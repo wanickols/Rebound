@@ -1,9 +1,10 @@
+use crate::end_game;
 use crate::game::eventqueue::{EventQueue, GameEvent};
 use crate::game::input::{
     playercontroller, GameAction, GameActionEvent, InputValue, PlayerController,
 };
 use crate::game::physics::Physics;
-use crate::game::scoremanager::{ScoreManager, Team};
+use crate::game::scoremanager::{self, ScoreManager, Team};
 use crate::game::spawnmanager::SpawnManager;
 use crate::game::state::{PlayerId, State};
 use crate::game::util::Util;
@@ -17,14 +18,13 @@ pub enum GamePhase {
     Waiting,
     Countdown { time_left: f32 },
     Playing,
+    GameOver,
 }
 
 pub struct GameManager {
     pub states: Vec<State>,
     pending_inputs: HashMap<PlayerId, Vec<GameActionEvent>>,
     pub app: AppHandle,
-    pub width: f32,
-    pub height: f32,
     pub phase: GamePhase,
     pub event_queue: EventQueue,
     pub score_manager: ScoreManager,
@@ -51,41 +51,17 @@ impl GameManager {
             },
         );
 
-        let mut gm = Self {
+        let gm = Self {
             app: app.clone(),
             states: vec![], // also keep it in the states list
             pending_inputs: HashMap::new(),
-            width,
-            height,
             phase: GamePhase::Waiting,
             event_queue: EventQueue::new(),
             score_manager: score_manager,
-            spawn_manager: SpawnManager::new(),
+            spawn_manager: SpawnManager::new(width, height),
         };
 
-        gm.create_borders();
-
         gm
-    }
-
-    fn create_borders(&mut self) {
-        let thickness = 10.0; // wall thickness
-
-        // Top wall
-        self.states
-            .push(State::new_wall(0.0, -thickness, self.width, thickness));
-
-        // Bottom wall
-        self.states
-            .push(State::new_wall(0.0, self.height, self.width, thickness));
-
-        // Left wall
-        self.states
-            .push(State::new_wall(-thickness, 0.0, thickness, self.height));
-
-        // Right wall
-        self.states
-            .push(State::new_wall(self.width, 0.0, thickness, self.height));
     }
 
     pub fn set_input(&mut self, player: PlayerId, action: GameAction, value: InputValue) {
@@ -100,13 +76,19 @@ impl GameManager {
     }
 
     pub fn set_game_settings(&mut self, player_count: u8, target_score: u8) {
-        self.spawn_manager
-            .set_game_settings(player_count, target_score);
+        self.spawn_manager.set_player_count(player_count);
+        self.score_manager.set_target_score(target_score);
     }
 
     pub fn start_game(&mut self) {
         self.phase = GamePhase::Countdown { time_left: 3.0 };
         self.spawn_manager.spawn_states(&mut self.states);
+    }
+
+    pub fn end_game(&mut self) {
+        self.spawn_manager.remove_all(&mut self.states);
+        self.score_manager.reset();
+        self.phase = GamePhase::Waiting;
     }
 
     pub fn try_get_new_player(&mut self) -> Option<PlayerId> {
@@ -118,7 +100,9 @@ impl GameManager {
         for event in self.event_queue.drain() {
             match event {
                 GameEvent::GoalScored { team_id } => {
-                    self.score_manager.add_point(team_id);
+                    if self.score_manager.add_point(team_id) {
+                        self.phase = GamePhase::GameOver;
+                    }
                     self.spawn_manager.reset_states(&mut self.states);
                     self.score_manager.enable_score();
                 }
@@ -165,7 +149,6 @@ impl GameManager {
         }
 
         //GamePhase
-
         match &mut self.phase {
             GamePhase::Countdown { time_left } => {
                 *time_left -= dt;
@@ -200,6 +183,9 @@ impl GameManager {
             }
 
             GamePhase::Waiting => { /* do nothing */ }
+            GamePhase::GameOver => {
+                self.end_game();
+            }
         }
     }
 }

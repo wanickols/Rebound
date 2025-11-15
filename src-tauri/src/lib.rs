@@ -48,6 +48,12 @@ fn start_game(gm: tauri::State<Arc<Mutex<GameManager>>>) {
     gm.start_game();
 }
 
+#[tauri::command]
+fn end_game(gm: tauri::State<Arc<Mutex<GameManager>>>) {
+    let mut gm = gm.lock().unwrap();
+    gm.end_game();
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -63,7 +69,8 @@ pub fn run() {
             input_event,
             set_game_settings,
             request_player_id,
-            start_game
+            start_game,
+            end_game
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

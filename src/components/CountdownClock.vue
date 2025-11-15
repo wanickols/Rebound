@@ -9,7 +9,7 @@ const props = defineProps<{
 // The displayed number (null if not in countdown)
 const displayNumber = computed(() => {
   if (props.phase?.type === "Countdown") {
-    return Math.ceil(props.phase.time_left);
+    return Math.ceil(props.phase.time_left!);
   }
   return null;
 });
