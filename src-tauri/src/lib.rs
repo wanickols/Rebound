@@ -38,8 +38,16 @@ fn set_game_settings(
 #[tauri::command]
 fn request_player_id(gm: tauri::State<Arc<Mutex<GameManager>>>) -> Option<PlayerId> {
     let mut gm = gm.lock().unwrap();
+
     let pid = gm.try_get_new_player();
     pid
+}
+
+#[tauri::command]
+fn remove_player(id: (u32, usize), gm: tauri::State<Arc<Mutex<GameManager>>>) {
+    let mut gm = gm.lock().unwrap();
+    let player_id = PlayerId(id.0, id.1);
+    gm.remove_player(player_id);
 }
 
 #[tauri::command]
@@ -70,7 +78,8 @@ pub fn run() {
             set_game_settings,
             request_player_id,
             start_game,
-            end_game
+            end_game,
+            remove_player
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

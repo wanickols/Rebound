@@ -11,7 +11,7 @@ use crate::game::util::Util;
 use std::collections::HashMap;
 
 use tauri::window::Color;
-use tauri::AppHandle;
+use tauri::{AppHandle, Emitter};
 
 #[derive(serde::Serialize, Clone, Debug)]
 pub enum GamePhase {
@@ -29,6 +29,7 @@ pub struct GameManager {
     pub event_queue: EventQueue,
     pub score_manager: ScoreManager,
     pub spawn_manager: SpawnManager,
+    pub player_list: Vec<PlayerId>,
 }
 
 pub const GRAB_RADIUS: f32 = 32.0;
@@ -53,11 +54,12 @@ impl GameManager {
 
         let gm = Self {
             app: app.clone(),
-            states: vec![], // also keep it in the states list
+            states: vec![],
             pending_inputs: HashMap::new(),
             phase: GamePhase::Waiting,
             event_queue: EventQueue::new(),
             score_manager: score_manager,
+            player_list: vec![],
             spawn_manager: SpawnManager::new(width, height),
         };
 
@@ -92,7 +94,26 @@ impl GameManager {
     }
 
     pub fn try_get_new_player(&mut self) -> Option<PlayerId> {
-        return self.spawn_manager.add_single_player(&mut self.states);
+        let id = self
+            .spawn_manager
+            .add_single_player(&mut self.states, &mut self.player_list);
+        if (id.is_some()) {
+            self.update_player_list();
+        }
+        return id;
+    }
+
+    pub fn remove_player(&mut self, id: PlayerId) {
+        self.spawn_manager
+            .remove_player(&mut self.states, id, &mut self.player_list);
+        self.update_player_list();
+    }
+
+    fn update_player_list(&self) {
+        let payload = self.player_list.clone();
+        if let Err(err) = self.app.emit("player-list", payload) {
+            eprintln!("Failed to emit player-list: {}", err);
+        }
     }
 
     pub fn update(&mut self) {

@@ -1,4 +1,5 @@
 // InputManager.ts
+import { PlayerId, ReactivePlayerManager } from "@/Game/PlayerManager";
 import { invoke } from "@tauri-apps/api/core";
 
 export type GameAction = "move" | "action" | "aim" | "look" | "pause";
@@ -9,30 +10,29 @@ type InputValue =
   | { Float: number }
   | { None: Record<string, never> };
 
-interface Controller {
-  id: [number, number];
-  index: number; // gamepad index or -1 for keyboard
-}
-
 export class InputManager {
-  controllers: Controller[] = [];
   keys: Record<string, boolean> = {};
   lastMove: Record<number, { x: number; y: number }> = {};
   mouseDown = false;
   private scale = 1.0;
   mousePos = { x: 0, y: 0 };
+  playerManager: ReactivePlayerManager;
 
   constructor() {
+    this.playerManager = new ReactivePlayerManager();
+
     window.addEventListener("keydown", (e) => this.onKey(e, true));
     window.addEventListener("keyup", (e) => this.onKey(e, false));
-    window.addEventListener("gamepadconnected", (e) => this.onGamepad(e));
+    window.addEventListener("gamepadconnected", (e) =>
+      this.addController(e.gamepad.index)
+    );
     window.addEventListener("gamepaddisconnected", (e) =>
-      this.onGamepadDisconnect(e)
+      this.removeController(e.gamepad.index)
     );
 
-    // Create a keyboard controller immediately
-    this.addController(-1);
+    this.addController(-1); // keyboard/mouse
     this.pollGamepads();
+
     window.addEventListener("mousedown", (e) => {
       if (e.button === 0) this.mouseDown = true;
     });
@@ -53,12 +53,11 @@ export class InputManager {
     this.mousePos.x = scaledX;
     this.mousePos.y = scaledY;
 
-    const kb = this.controllers.find((c) => c.index === -1);
-    if (kb) {
-      this.sendActionToServer(kb.id, "aim", {
-        Vec2: { x: scaledX, y: scaledY },
-      });
-    }
+    const kb = this.playerManager.getPlayerByController(-1);
+    if (!kb) return;
+    this.sendActionToServer(kb.id, "aim", {
+      Vec2: { x: scaledX, y: scaledY },
+    });
   }
 
   setScale(scale: number) {
@@ -66,17 +65,24 @@ export class InputManager {
   }
 
   async addController(index: number) {
-    if (this.controllers.some((c) => c.index === index)) return;
-
-    const id = await invoke<[number, number] | null>("request_player_id");
+    // Request player ID from backend
+    const id = await invoke<PlayerId | null>("request_player_id");
     if (!id) {
       console.warn("Failed to get player ID for controller", index);
       return;
     }
 
-    const controller: Controller = { id, index };
-    this.controllers.push(controller);
-    console.log("Added controller:", controller);
+    // Assign controller to player
+    this.playerManager.assignController(id, index);
+    console.log("Controller assigned:", { index, id });
+  }
+
+  removeController(index: number) {
+    const player = this.playerManager.getPlayerByController(index);
+    if (player) {
+      player.controllerIndex = null;
+      console.log("Controller removed from player:", player.id);
+    }
   }
 
   onGamepad(e: GamepadEvent) {
@@ -85,29 +91,32 @@ export class InputManager {
   }
 
   onGamepadDisconnect(e: GamepadEvent) {
-    this.controllers = this.controllers.filter(
-      (c) => c.index !== e.gamepad.index
-    );
-    console.log(`Gamepad disconnected: ${e.gamepad.index}`);
+    let index = e.gamepad.index;
+    const player = this.playerManager.getPlayerByController(index);
+    if (!player) return;
+    this.removeController(index);
+    console.log(`Gamepad disconnected: ${index}`);
   }
 
   onKey(e: KeyboardEvent, down: boolean) {
     const key = e.key.toLowerCase();
     this.keys[key] = down;
 
-    const keyboard = this.controllers.find((c) => c.index === -1);
-    if (!keyboard) return;
+    const player = this.playerManager.getPlayerByController(-1);
+    console.log("Keyboard check?");
+    console.log(player);
+    if (!player) return;
 
     // compute move vector from WASD
     const x = (this.keys["d"] ? 1 : 0) - (this.keys["a"] ? 1 : 0);
     const y = (this.keys["s"] ? 1 : 0) - (this.keys["w"] ? 1 : 0);
 
-    this.updateMove(keyboard.id, -1, x, y); // -1 = keyboard index
+    this.updateMove(player.id, -1, x, y); // -1 = keyboard index
 
     if (key === " ") {
-      this.sendActionToServer(keyboard.id, "action", { Bool: down });
+      this.sendActionToServer(player.id, "action", { Bool: down });
     } else if (key === "escape") {
-      this.sendActionToServer(keyboard.id, "pause", { Bool: down });
+      this.sendActionToServer(player.id, "pause", { Bool: down });
     }
   }
 
@@ -117,7 +126,7 @@ export class InputManager {
       for (const pad of pads) {
         if (!pad) continue;
 
-        const controller = this.controllers.find((c) => c.index === pad.index);
+        const controller = this.playerManager.getPlayerByController(pad.index);
         if (!controller) continue;
 
         const x = pad.axes[0];

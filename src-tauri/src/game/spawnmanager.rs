@@ -36,7 +36,11 @@ impl SpawnManager {
         }
     }
 
-    pub fn add_single_player(&mut self, states: &mut Vec<State>) -> Option<PlayerId> {
+    pub fn add_single_player(
+        &mut self,
+        states: &mut Vec<State>,
+        player_list: &mut Vec<PlayerId>,
+    ) -> Option<PlayerId> {
         let id = self.curr_player_count;
         if id >= self.player_count {
             println!("Max players reached!");
@@ -46,11 +50,18 @@ impl SpawnManager {
         let (x, y) = PLAYER_POSITIONS[id as usize];
         let player_id = self.add_player(states, x, y)?;
         self.curr_player_count += 1;
+        player_list.push(player_id);
         Some(player_id)
     }
 
-    pub fn remove_player(&mut self, states: &mut Vec<State>, player_id: u32) {
-        states.retain(|s| s.get_player_id().map_or(true, |id| id.0 != player_id));
+    pub fn remove_player(
+        &mut self,
+        states: &mut Vec<State>,
+        player_id: PlayerId,
+        player_list: &mut Vec<PlayerId>,
+    ) {
+        states.remove(player_id.1);
+        player_list.remove(player_id.1);
         self.curr_player_count -= 1;
     }
 
