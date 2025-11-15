@@ -12,18 +12,27 @@ use std::collections::HashMap;
 use tauri::window::Color;
 use tauri::AppHandle;
 
+#[derive(serde::Serialize, Clone, Debug)]
+pub enum GamePhase {
+    Waiting,
+    Countdown { time_left: f32 },
+    Playing,
+}
+
 pub struct GameManager {
     pub states: Vec<State>,
     pending_inputs: HashMap<PlayerId, Vec<GameActionEvent>>,
     pub app: AppHandle,
     pub width: f32,
     pub height: f32,
+    pub phase: GamePhase,
     pub event_queue: EventQueue,
     pub score_manager: ScoreManager,
     pub spawn_manager: SpawnManager,
 }
 
 pub const GRAB_RADIUS: f32 = 32.0;
+pub const dt: f32 = 0.016; // ~0.016
 
 impl GameManager {
     pub fn new(app: &AppHandle, width: f32, height: f32) -> Self {
@@ -48,6 +57,7 @@ impl GameManager {
             pending_inputs: HashMap::new(),
             width,
             height,
+            phase: GamePhase::Waiting,
             event_queue: EventQueue::new(),
             score_manager: score_manager,
             spawn_manager: SpawnManager::new(),
@@ -95,6 +105,7 @@ impl GameManager {
     }
 
     pub fn start_game(&mut self) {
+        self.phase = GamePhase::Countdown { time_left: 3.0 };
         self.spawn_manager.spawn_states(&mut self.states);
     }
 
@@ -153,26 +164,42 @@ impl GameManager {
             }
         }
 
-        //Apply physics
-        for (&player_id, events) in &self.pending_inputs {
-            if let Some(state) = self
-                .states
-                .iter_mut()
-                .find(|s| s.get_player_id() == Some(player_id))
-            {
-                for event in events {
-                    let input = state.input();
-                    match event.action {
-                        GameAction::Move => input.move_axis = event.value.as_vec2(),
-                        GameAction::Action => input.action = event.value.as_bool(),
-                        GameAction::Aim => input.mouse_pos = event.value.as_vec2(),
-                        GameAction::Look => input.look_pos = event.value.as_vec2(),
-                    }
+        //GamePhase
+
+        match &mut self.phase {
+            GamePhase::Countdown { time_left } => {
+                *time_left -= dt;
+
+                if *time_left <= 0.0 {
+                    self.phase = GamePhase::Playing;
                 }
             }
+
+            GamePhase::Playing => {
+                //Apply physics
+                for (&player_id, events) in &self.pending_inputs {
+                    if let Some(state) = self
+                        .states
+                        .iter_mut()
+                        .find(|s| s.get_player_id() == Some(player_id))
+                    {
+                        for event in events {
+                            let input = state.input();
+                            match event.action {
+                                GameAction::Move => input.move_axis = event.value.as_vec2(),
+                                GameAction::Action => input.action = event.value.as_bool(),
+                                GameAction::Aim => input.mouse_pos = event.value.as_vec2(),
+                                GameAction::Look => input.look_pos = event.value.as_vec2(),
+                            }
+                        }
+                    }
+                }
+                self.pending_inputs.clear();
+
+                Physics::update(&mut self.states, dt, &mut self.event_queue);
+            }
+
+            GamePhase::Waiting => { /* do nothing */ }
         }
-        self.pending_inputs.clear();
-        let dt: f32 = 1.0 / 120.0; // ~0.016
-        Physics::update(&mut self.states, dt, &mut self.event_queue);
     }
 }

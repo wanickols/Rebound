@@ -2,7 +2,7 @@
 import { ref, onMounted, onBeforeUnmount } from "vue";
 import { GameRenderer } from "@/Game/Renderer/GameRenderer";
 import { listen } from "@tauri-apps/api/event";
-import { GamePayload } from "@/Game/GamePayload";
+import { GamePayload } from "@/Game/Payload/GamePayload";
 import { InputManager } from "@/utils/InputManager";
 
 const canvas = ref<HTMLCanvasElement | null>(null);

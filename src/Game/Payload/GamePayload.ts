@@ -1,8 +1,13 @@
-import { State } from "./State";
+import { State } from "../State";
+import { GamePhase } from "./GamePhase";
 import { ScoreManager } from "./ScoreManager";
 
 export class GamePayload {
-  constructor(public states: State[], public score_manager: ScoreManager) {}
+  constructor(
+    public states: State[],
+    public score_manager: ScoreManager,
+    public phase: GamePhase
+  ) {}
 
   static from(obj: any): GamePayload {
     const states = obj.render_states.map((s: any, i: number) => {
@@ -21,7 +26,7 @@ export class GamePayload {
     });
 
     const score_manager = ScoreManager.from(obj.score_manager);
-
-    return new GamePayload(states, score_manager);
+    const phase = GamePhase.from(obj.game_phase);
+    return new GamePayload(states, score_manager, phase);
   }
 }

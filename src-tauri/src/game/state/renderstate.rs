@@ -5,7 +5,7 @@ use crate::game::state::{
     {Kind, Shape, State},
 };
 
-#[derive(Serialize, Clone)]
+#[derive(Serialize, Clone, Debug)]
 pub struct RenderState {
     pub x: f32,
     pub y: f32,

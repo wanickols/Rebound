@@ -42,7 +42,7 @@ export class InputManager {
   }
 
   handleMouseMove(x: number, y: number) {
-    if(!this.mouseDown) return;
+    if (!this.mouseDown) return;
 
     const scaledX = x * this.scale;
     const scaledY = y * this.scale;
@@ -154,6 +154,7 @@ export class InputManager {
   }
 
   sendActionToServer(id: [number, number], action: string, value: InputValue) {
+    console.log("sending stuff" + id + action + value);
     invoke("input_event", { id, action, value }).catch((err) => {
       console.warn("Failed to send input event:", err);
     });

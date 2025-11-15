@@ -1,6 +1,6 @@
 use tauri::window::Color;
 
-#[derive(Default, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Default, Clone, serde::Serialize, serde::Deserialize, Debug)]
 pub struct Team {
     pub id: u8,
     pub name: String,
@@ -18,7 +18,7 @@ impl Team {
     }
 }
 
-#[derive(Default, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Default, Clone, serde::Serialize, serde::Deserialize, Debug)]
 pub struct ScoreManager {
     pub teams: Vec<Team>,
     can_score: bool,
