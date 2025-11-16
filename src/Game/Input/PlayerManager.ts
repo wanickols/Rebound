@@ -1,5 +1,6 @@
 import { reactive, computed } from "vue";
 import { listen } from "@tauri-apps/api/event";
+import { invoke } from "@tauri-apps/api/core";
 
 export type PlayerId = [number, number];
 
@@ -42,9 +43,28 @@ export class ReactivePlayerManager {
     }
   }
 
-  assignController(id: PlayerId, controllerIndex: number) {
+  async assignController(index: number) {
+    // Request player ID from backend
+    const id = await invoke<PlayerId | null>("request_player_id");
+    if (!id) {
+      console.warn("Failed to get player ID for controller", index);
+      return;
+    }
+
     const player = this.state.players.get(id[0]);
-    if (player) player.controllerIndex = controllerIndex;
+    if (player) player.controllerIndex = index;
+
+    console.log("Controller assigned:", { index, id });
+  }
+
+  async removeController(index: number) {
+    const player = this.getPlayerByController(index);
+    if (player) {
+      player.controllerIndex = null;
+      console.log("Controller removed from player:", player.id);
+    } else {
+      console.log("Tried to remove non existent controller at index: ", index);
+    }
   }
 
   getPlayerByController(index: number) {

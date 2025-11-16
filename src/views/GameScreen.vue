@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
 import GameCanvas from "@components/GameCanvas.vue";
-import { InputManager } from "@/utils/InputManager";
+import { InputManager } from "@/Game/Input/InputManager";
 import { GamePayload } from "@/Game/Payload/GamePayload";
 import { listen } from "@tauri-apps/api/event";
 import { ScoreManager } from "@/Game/Payload/ScoreManager";
