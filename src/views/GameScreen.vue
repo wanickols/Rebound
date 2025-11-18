@@ -47,13 +47,14 @@ const onPlay = async () => {
 };
 
 const goBack = () => {
+  invoke("quit_game", {});
   router.push("/");
 };
 </script>
 
 <template>
   <div class="w-screen h-screen relative">
-    <GameCanvas :inputManager="inputManager" />
+    <GameCanvas :keyboardManager="inputManager.keyboardManager" />
 
     <!-- Score display -->
     <div class="absolute top-4 left-4 text-white text-xl">

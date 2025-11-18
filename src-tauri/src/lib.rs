@@ -56,10 +56,18 @@ fn start_game(gm: tauri::State<Arc<Mutex<GameManager>>>) {
     gm.start_game();
 }
 
+//This is for ending a game session, like a round
 #[tauri::command]
 fn end_game(gm: tauri::State<Arc<Mutex<GameManager>>>) {
     let mut gm = gm.lock().unwrap();
     gm.end_game();
+}
+
+//This is for quitting the game where you'd reset #players etc.
+#[tauri::command]
+fn quit_game(gm: tauri::State<Arc<Mutex<GameManager>>>) {
+    let mut gm = gm.lock().unwrap();
+    gm.quit_game();
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -79,7 +87,8 @@ pub fn run() {
             request_player_id,
             start_game,
             end_game,
-            remove_player
+            quit_game,
+            remove_player,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

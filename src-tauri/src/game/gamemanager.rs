@@ -88,9 +88,16 @@ impl GameManager {
     }
 
     pub fn end_game(&mut self) {
+        self.spawn_manager.remove_non_player(&mut self.states);
+        self.score_manager.reset();
+        self.phase = GamePhase::Waiting;
+    }
+
+    pub fn quit_game(&mut self) {
         self.spawn_manager.remove_all(&mut self.states);
         self.score_manager.reset();
         self.phase = GamePhase::Waiting;
+        self.player_list.clear();
     }
 
     pub fn try_get_new_player(&mut self) -> Option<PlayerId> {

@@ -4,6 +4,7 @@ import { GameRenderer } from "@/Game/Renderer/GameRenderer";
 import { listen } from "@tauri-apps/api/event";
 import { GamePayload } from "@/Game/Payload/GamePayload";
 import { InputManager } from "@/Game/Input/InputManager";
+import { KeyboardManager } from "@/Game/Input/KeyboardManager";
 
 const canvas = ref<HTMLCanvasElement | null>(null);
 
@@ -13,7 +14,7 @@ const GAME_HEIGHT = 1080;
 var renderer: GameRenderer;
 
 const props = defineProps<{
-  inputManager: InputManager; // or use the proper type
+  keyboardManager: KeyboardManager; // or use the proper type
 }>();
 
 onMounted(async () => {
@@ -70,7 +71,7 @@ function onMouseMove(e: MouseEvent) {
 
   //let scale = renderer.getScale();
   //props.inputManager.setScale(scale);
-  props.inputManager.handleMouseMove(x, y);
+  props.keyboardManager.handleMouseMove(x, y);
 }
 </script>
 
