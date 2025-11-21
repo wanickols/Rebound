@@ -1,25 +1,13 @@
-// InputManager.ts
-import { ReactivePlayerManager } from "@/Game/Input/PlayerManager";
 import { invoke } from "@tauri-apps/api/core";
 import { InputValue } from "./InputTypes";
-import { ControllerManager } from "./ControllerManager";
-import { KeyboardManager } from "./KeyboardManager";
-
+import { Player, playerManager } from "./PlayerManager";
+import { keyboardManager } from "./KeyboardManager";
 export class InputManager {
-  playerManager: ReactivePlayerManager;
-  controllerManager: ControllerManager;
-  keyboardManager: KeyboardManager;
-
-  constructor() {
-    this.playerManager = new ReactivePlayerManager();
-    this.controllerManager = new ControllerManager(this, this.playerManager);
-    this.keyboardManager = new KeyboardManager(this, this.playerManager);
-  }
-
   //Movement
   lastMove: Record<number, { x: number; y: number }> = {};
+  keyboardManager: any;
 
-  public updateMove(id: [number, number], index: number, x: number, y: number) {
+  updateMove(id: [number, number], index: number, x: number, y: number) {
     // optional deadzone for analog sticks
     const deadzone = 0.2;
     const mx = Math.abs(x) < deadzone ? 0 : x;
@@ -32,8 +20,65 @@ export class InputManager {
     }
   }
 
-  setScale(scale: number) {
-    this.keyboardManager.scale = scale;
+  handleMouseMove(x: number, y: number) {
+    const km = keyboardManager;
+    if (!km.mouseDown) return;
+
+    const scaledX = x * km.scale;
+    const scaledY = y * km.scale;
+
+    // Only send if the position changed
+    if (scaledX === km.mousePos.x && scaledY === km.mousePos.y) return;
+
+    km.mousePos.x = scaledX;
+    km.mousePos.y = scaledY;
+
+    const kb = playerManager.getPlayerByController(-1);
+    if (!kb) return;
+      this.sendActionToServer(kb.id, "aim", {
+      Vec2: { x: scaledX, y: scaledY },
+    });
+  }
+
+  handleKeyboardEvent(player: Player) {
+    const keys = player.keys;
+    // compute move vector from WASD
+    const x = (keys["d"] ? 1 : 0) - (keys["a"] ? 1 : 0);
+    const y = (keys["s"] ? 1 : 0) - (keys["w"] ? 1 : 0);
+
+    this.updateMove(player.id, -1, x, y); // -1 = keyboard index
+
+    if (keys[" "]) {
+      this.sendActionToServer(player.id, "action", { Bool: true });
+    } else if (keys["escape"]) {
+      this.sendActionToServer(player.id, "pause", { Bool: true });
+    }
+  }
+
+  handleGamepadEvent(pad: Gamepad) {
+    const controller = playerManager.getPlayerByController(pad.index);
+    if (!controller) return;
+
+    // Axes
+    const x = pad.axes[0];
+    const y = pad.axes[1];
+
+    this.updateMove(controller.id, pad.index, x, y);
+
+    // Action
+    const pressed = pad.buttons[0].pressed;
+    this.sendActionToServer(controller.id, "action", { Bool: pressed });
+
+    // Look
+    const [rx, ry] = [pad.axes[2], pad.axes[3]];
+    const deadzone = 0.2;
+
+    const mx = Math.abs(rx) < deadzone ? 0 : rx;
+    const my = Math.abs(ry) < deadzone ? 0 : ry;
+
+    this.sendActionToServer(controller.id, "look", {
+      Vec2: { x: mx, y: my },
+    });
   }
 
   //Server Side
