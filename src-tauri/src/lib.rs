@@ -73,6 +73,7 @@ fn quit_game(gm: tauri::State<Arc<Mutex<GameManager>>>) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_store::Builder::default().build())
         .setup(|app| {
             let gm = Arc::new(Mutex::new(GameManager::new(app.handle(), 320.0, 180.0)));
             app.manage(gm.clone());

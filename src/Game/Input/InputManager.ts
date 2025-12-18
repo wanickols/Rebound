@@ -1,11 +1,14 @@
 import { invoke } from "@tauri-apps/api/core";
 import { InputValue } from "./InputTypes";
 import { Player, playerManager } from "./PlayerManager";
-import { keyboardManager } from "./KeyboardManager";
+import { KeyboardManager } from "./KeyboardManager";
+import { GamepadData } from "./ControllerManager";
 export class InputManager {
   //Movement
   lastMove: Record<number, { x: number; y: number }> = {};
-  keyboardManager: any;
+  km: any;
+
+  constructor() {}
 
   updateMove(id: [number, number], index: number, x: number, y: number) {
     // optional deadzone for analog sticks
@@ -21,21 +24,21 @@ export class InputManager {
   }
 
   handleMouseMove(x: number, y: number) {
-    const km = keyboardManager;
-    if (!km.mouseDown) return;
+    if (!this.km.mouseDown) return;
 
-    const scaledX = x * km.scale;
-    const scaledY = y * km.scale;
+    const scaledX = x * this.km.scale;
+    const scaledY = y * this.km.scale;
 
     // Only send if the position changed
-    if (scaledX === km.mousePos.x && scaledY === km.mousePos.y) return;
+    if (scaledX === this.km.mousePos.x && scaledY === this.km.mousePos.y)
+      return;
 
-    km.mousePos.x = scaledX;
-    km.mousePos.y = scaledY;
+    this.km.mousePos.x = scaledX;
+    this.km.mousePos.y = scaledY;
 
     const kb = playerManager.getPlayerByController(-1);
     if (!kb) return;
-      this.sendActionToServer(kb.id, "aim", {
+    this.sendActionToServer(kb.id, "aim", {
       Vec2: { x: scaledX, y: scaledY },
     });
   }
@@ -55,7 +58,7 @@ export class InputManager {
     }
   }
 
-  handleGamepadEvent(pad: Gamepad) {
+  handleGamepadEvent(pad: GamepadData) {
     const controller = playerManager.getPlayerByController(pad.index);
     if (!controller) return;
 
@@ -66,7 +69,7 @@ export class InputManager {
     this.updateMove(controller.id, pad.index, x, y);
 
     // Action
-    const pressed = pad.buttons[0].pressed;
+    const pressed = pad.buttons[0];
     this.sendActionToServer(controller.id, "action", { Bool: pressed });
 
     // Look
@@ -87,7 +90,6 @@ export class InputManager {
     action: string,
     value: InputValue
   ) {
-    console.log("sending stuff" + id + action + value);
     invoke("input_event", { id, action, value }).catch((err) => {
       console.warn("Failed to send input event:", err);
     });

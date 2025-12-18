@@ -1,16 +1,9 @@
 <script setup>
-import { onMounted } from "vue";
-
 const savedPath = sessionStorage.getItem("redirect-path");
 if (savedPath) {
   sessionStorage.removeItem("redirect-path");
   window.history.replaceState({}, "", savedPath);
 }
-
-onMounted(() => {
-  bus.on("controllerAvailable", onControllerAvailable);
-  bus.on("controllerRemoved", onControllerRemoved);
-});
 </script>
 
 <template>

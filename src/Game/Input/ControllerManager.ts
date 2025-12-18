@@ -1,5 +1,13 @@
 import { bus } from "@/utils/EventBus";
 
+// ControllerManager.ts
+export interface GamepadData {
+  index: number;
+  id: string;
+  axes: number[];
+  buttons: boolean[];
+}
+
 export class ControllerManager {
   constructor() {
     window.addEventListener("gamepadconnected", (e) => this.onGamepad(e));
@@ -11,13 +19,22 @@ export class ControllerManager {
 
   pollGamepads() {
     const pads = navigator.getGamepads();
-    for (const pad of pads) {
+    for (let i = 0; i < pads.length; i++) {
+      const pad = pads[i];
       if (!pad) continue;
+
+      const padData: GamepadData = {
+        index: pad.index,
+        id: pad.id,
+        axes: [...pad.axes],
+        buttons: pad.buttons.map((b) => b.pressed),
+      };
+
       if (!this.knownPads.has(pad.index)) {
         this.knownPads.add(pad.index);
         bus.emit("controllerAvailable", pad.index);
       } else {
-        bus.emit("gamepadEvent", { pad });
+        bus.emit("gamepadEvent", padData);
       }
     }
   }
@@ -37,5 +54,3 @@ export class ControllerManager {
     }
   }
 }
-
-export const controllerManager = new ControllerManager();

@@ -32,5 +32,3 @@ export class KeyboardManager {
     bus.emit("keyboardEvent", player);
   }
 }
-
-export const keyboardManager = new KeyboardManager();

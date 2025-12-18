@@ -1,20 +1,20 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, onUnmounted } from "vue";
+import { ref, onMounted, onBeforeUnmount } from "vue";
 import { GameRenderer } from "@/Game/Renderer/GameRenderer";
 import { listen } from "@tauri-apps/api/event";
 import { GamePayload } from "@/Game/Payload/GamePayload";
 import { InputManager } from "@/Game/Input/InputManager";
-import { controllerManager } from "@/Game/Input/ControllerManager";
-import { bus } from "@/utils/EventBus";
-import { Player } from "@/Game/Input/PlayerManager";
 
-const inputManager = new InputManager();
 const canvas = ref<HTMLCanvasElement | null>(null);
 
 const GAME_WIDTH = 1920;
 const GAME_HEIGHT = 1080;
 
 var renderer: GameRenderer;
+
+const props = defineProps<{
+  inputManager: InputManager;
+}>();
 
 onMounted(async () => {
   if (!canvas.value) return;
@@ -24,16 +24,14 @@ onMounted(async () => {
   canvas.value.height = GAME_HEIGHT;
 
   window.addEventListener("resize", resizeCanvas);
-  window.addEventListener("mousemove", (e) => onMouseMove(e));
+  //window.addEventListener("mousemove", (e) => onMouseMove(e));
+
   resizeCanvas(); // initial call
 
   const ctx = canvas.value.getContext("2d");
   if (!ctx) return;
 
   renderer = new GameRenderer(ctx, canvas.value);
-
-  bus.on("gamepadEvent", onGamepadEvent);
-  bus.on("keyboardEvent", onKeyboardEvent);
 
   // listen for backend state updates
   await listen<GamePayload>("game-state", (event) => {
@@ -44,17 +42,7 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   window.removeEventListener("resize", resizeCanvas);
-  bus.off("gamepadEvent", onGamepadEvent);
-  bus.off("keyboardEvent", onKeyboardEvent);
 });
-
-function onGamepadEvent(gamepad: Gamepad) {
-  inputManager.handleGamepadEvent(gamepad);
-}
-
-function onKeyboardEvent(player: Player) {
-  inputManager.handleKeyboardEvent(player);
-}
 
 function resizeCanvas() {
   if (!canvas.value) return;
@@ -83,14 +71,13 @@ function onMouseMove(e: MouseEvent) {
 
   //let scale = renderer.getScale();
   //inputManager.inputManager.setScale(scale);
-  inputManager.keyboardManager.handleMouseMove(x, y);
+  props.inputManager.handleMouseMove(x, y);
 }
 </script>
 
 <template>
   <canvas ref="canvas" tabindex="0"></canvas>
 </template>
-
 <style scoped>
 canvas {
   outline: none;

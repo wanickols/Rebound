@@ -12,15 +12,14 @@ onMounted(async () => {
   await listen<GamePayload>("game-state", (event) => {
     const payload = GamePayload.from(event.payload);
     phase.value = payload.phase; // <--
-    console.log("Phase" + phase);
   });
 });
 </script>
 
 <template>
   <div class="w-screen h-screen relative">
-    <CountdownClock :phase="phase" />
     <Lobby v-if="phase?.type === 'Waiting'" />
-    <GameHUD v-if="phase?.type !== 'Waiting'" />
+    <GameHUD />
+    <CountdownClock :phase="phase" />
   </div>
 </template>
