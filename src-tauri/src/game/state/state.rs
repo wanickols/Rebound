@@ -371,13 +371,13 @@ impl State {
         s
     }
 
-    pub fn new_hitcircle(x: f32, y: f32, radius: f32, angle: f32) -> Self {
+    pub fn new_brick(x: f32, y: f32, w: f32) -> Self {
         let mut s = State::new();
         s.x = x;
         s.y = y;
-        s.shape = Shape::Circle { radius };
-        s.angle = angle;
-        s.is_trigger = true;
+        s.shape = Shape::Rectangle { w, h: w };
+        s.kind = Kind::Brick;
+        s.mass = 20.0;
         s.is_static = true;
         s
     }

@@ -93,6 +93,8 @@ impl SpawnManager {
     fn create_borders(&mut self, states: &mut Vec<State>) {
         let thickness = 10.0; // wall thickness
 
+        states.push(State::new_brick(100.0, 50.0, 8.0));
+
         // Top wall
         states.push(State::new_wall(0.0, -thickness, self.width, thickness));
 
