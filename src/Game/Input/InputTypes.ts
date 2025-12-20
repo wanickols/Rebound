@@ -1,4 +1,4 @@
-export type GameAction = "move" | "action" | "aim" | "look" | "pause";
+export type GameAction = "move" | "action" | "aim" | "look" | "pause" | "place";
 
 export type InputValue =
   | { Bool: boolean }

@@ -2,10 +2,24 @@ use crate::game::state::PlayerId;
 
 #[derive(Debug, Clone)]
 pub enum GameEvent {
-    GoalScored { team_id: u8 },
+    GoalScored {
+        team_id: u8,
+    },
     ResetScore,
-    TryGrab { player_id: PlayerId },
-    Shoot { player_id: PlayerId },
+    TryGrab {
+        player_id: PlayerId,
+    },
+    Shoot {
+        player_id: PlayerId,
+    },
+    Place {
+        player_id: PlayerId,
+        pos: (f32, f32),
+    },
+    Die {
+        owner_id: PlayerId,
+        brick_index: usize,
+    },
 }
 
 #[derive(Default)]

@@ -5,10 +5,13 @@ use crate::game::state::{InputState, State};
 #[derive(Clone)]
 pub struct PlayerController {
     accel: f32,
+    last_angle: f32,
     max_speed: f32,
     action_toggle: bool,
     mouse_pos: (f32, f32),
     prev_action: bool,
+    curr_brick_count: u8,
+    max_bricks: u8,
     pub is_holding: bool,
     pub player_id: PlayerId,
     pub input: InputState,
@@ -22,6 +25,9 @@ impl PlayerController {
             action_toggle: false,
             is_holding: false,
             prev_action: false,
+            curr_brick_count: 0,
+            last_angle: 0.0,
+            max_bricks: 3,
             mouse_pos: (0.0, 0.0),
             input: InputState::new(),
             player_id: PlayerId::new(index),
@@ -44,18 +50,27 @@ impl PlayerController {
 
         //If look does nothing, see if aiming is a thing
         if angle.is_none() {
-            angle = self.handle_aim((x, y))
+            angle = self.handle_aim((x, y));
+            if angle.is_none() {
+                angle = Some(0.0);
+            }
+            self.last_angle = angle.unwrap();
         }
 
         //handle actions
         if self.input.action {
-            if (self.input.action != self.prev_action) {
+            if self.input.action != self.prev_action {
                 self.prev_action = self.input.action;
 
                 self.handle_action(events);
             }
         } else {
             self.prev_action = false;
+        }
+
+        //Handle Brick Placement
+        if self.input.place {
+            self.handle_brick_placement(events, (x, y), angle.expect("No angle bro"));
         }
 
         // apply acceleration to velocity
@@ -67,6 +82,16 @@ impl PlayerController {
         vy = vy.clamp(-self.max_speed, self.max_speed);
 
         (x, y, vx, vy, angle)
+    }
+
+    pub fn add_brick(&mut self) {
+        self.curr_brick_count += 1;
+    }
+
+    pub fn remove_brick(&mut self) {
+        if self.curr_brick_count > 0 {
+            self.curr_brick_count -= 1;
+        }
     }
 
     fn handle_action(&mut self, events: &mut EventQueue) {
@@ -85,7 +110,7 @@ impl PlayerController {
     fn handle_aim(&mut self, player_pos: (f32, f32)) -> Option<f32> {
         let mouse_pos = self.input.mouse_pos;
         if mouse_pos == self.mouse_pos {
-            return None;
+            return Some(self.last_angle);
         }
 
         let dx = mouse_pos.0 - player_pos.0;
@@ -119,5 +144,31 @@ impl PlayerController {
             return Some(angle);
         }
         None
+    }
+
+    fn handle_brick_placement(
+        &mut self,
+        events: &mut EventQueue,
+        player_pos: (f32, f32),
+        angle: f32,
+    ) {
+        if self.curr_brick_count >= self.max_bricks {
+            return;
+        }
+
+        let distance: f32 = 24.0;
+
+        let dir_x = angle.cos();
+        let dir_y = angle.sin();
+
+        let brick_x = player_pos.0 + dir_x * distance;
+        let brick_y = player_pos.1 + dir_y * distance;
+
+        let brick_pos = (brick_x, brick_y);
+
+        events.push(GameEvent::Place {
+            player_id: self.player_id,
+            pos: brick_pos,
+        });
     }
 }

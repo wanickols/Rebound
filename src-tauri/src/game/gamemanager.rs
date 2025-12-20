@@ -6,7 +6,7 @@ use crate::game::input::{
 use crate::game::physics::Physics;
 use crate::game::scoremanager::{self, ScoreManager, Team};
 use crate::game::spawnmanager::SpawnManager;
-use crate::game::state::{PlayerId, State};
+use crate::game::state::{playerid, PlayerId, State};
 use crate::game::util::Util;
 use std::collections::HashMap;
 
@@ -173,6 +173,21 @@ impl GameManager {
                         Physics::apply_impulse(ball, player.angle, 1000.0); // tune power as needed
                     }
                 }
+                GameEvent::Place { player_id, pos } => {
+                    self.spawn_manager
+                        .add_brick(&mut self.states, pos, player_id);
+                    let player = &mut self.states[player_id.1];
+                    player.player_controller.as_mut().unwrap().add_brick();
+                }
+                GameEvent::Die {
+                    owner_id,
+                    brick_index,
+                } => {
+                    self.spawn_manager
+                        .remove_brick(&mut self.states, brick_index);
+                    let owner = &mut self.states[owner_id.1];
+                    owner.player_controller.as_mut().unwrap().remove_brick();
+                }
             }
         }
 
@@ -201,6 +216,7 @@ impl GameManager {
                                 GameAction::Action => input.action = event.value.as_bool(),
                                 GameAction::Aim => input.mouse_pos = event.value.as_vec2(),
                                 GameAction::Look => input.look_pos = event.value.as_vec2(),
+                                GameAction::Place => input.place = event.value.as_bool(),
                             }
                         }
                     }

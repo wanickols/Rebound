@@ -93,8 +93,6 @@ impl SpawnManager {
     fn create_borders(&mut self, states: &mut Vec<State>) {
         let thickness = 10.0; // wall thickness
 
-        states.push(State::new_brick(100.0, 50.0, 8.0));
-
         // Top wall
         states.push(State::new_wall(0.0, -thickness, self.width, thickness));
 
@@ -141,10 +139,11 @@ impl SpawnManager {
     ///Private
     //Add Functions:
     pub fn add_player(&mut self, states: &mut Vec<State>, x: f32, y: f32) -> Option<PlayerId> {
-        let player = State::new_player(x, y, states.len());
+        let mut player = State::new_player(x, y, states.len());
 
         if let Some(id) = player.get_player_id() {
             println!("Added player with ID: {} {}", id.0, id.1);
+            player.set_my_id(id.1);
             states.push(player);
             self.player_starts.push((x, y));
             Some(id)
@@ -152,6 +151,16 @@ impl SpawnManager {
             println!("Player has no ID!");
             None
         }
+    }
+
+    pub fn add_brick(&mut self, states: &mut Vec<State>, pos: (f32, f32), player_id: PlayerId) {
+        let mut brick = State::new_brick(pos.0, pos.1, 8.0, player_id);
+        brick.set_my_id(states.len());
+        states.push(brick);
+    }
+
+    pub fn remove_brick(&mut self, states: &mut Vec<State>, index: usize) {
+        states.remove(index);
     }
 
     fn add_ball(&mut self, states: &mut Vec<State>, x: f32, y: f32) {

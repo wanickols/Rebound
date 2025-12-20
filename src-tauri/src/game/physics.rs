@@ -1,9 +1,4 @@
-use crate::game::{
-    eventqueue::{self, EventQueue},
-    input::playercontroller,
-    state::{PlayerId, State},
-    util::Util,
-};
+use crate::game::{eventqueue::EventQueue, state::State, util::Util};
 
 pub struct Physics;
 
@@ -28,8 +23,7 @@ impl Physics {
                 }
             }
 
-            s.apply_friction(dt);
-            s.stop_if_tiny();
+            s.tick(dt, events);
 
             let (next_x, next_y) = s.predict_position(dt);
 
@@ -39,7 +33,7 @@ impl Physics {
                 }
 
                 if states[j].held_by.is_some() {
-                    if (states[i].is_holding()) {
+                    if states[i].is_holding() {
                         continue;
                     }
                 }

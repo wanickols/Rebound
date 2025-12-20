@@ -1,7 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { InputValue } from "./InputTypes";
 import { Player, playerManager } from "./PlayerManager";
-import { KeyboardManager } from "./KeyboardManager";
 import { GamepadData } from "./ControllerManager";
 export class InputManager {
   //Movement
@@ -69,8 +68,12 @@ export class InputManager {
     this.updateMove(controller.id, pad.index, x, y);
 
     // Action
-    const pressed = pad.buttons[0];
+    var pressed = pad.buttons[0];
     this.sendActionToServer(controller.id, "action", { Bool: pressed });
+
+    //Place
+    pressed = pad.buttons[1];
+    this.sendActionToServer(controller.id, "place", { Bool: pressed });
 
     // Look
     const [rx, ry] = [pad.axes[2], pad.axes[3]];

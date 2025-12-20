@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 pub enum GameAction {
     Move,
     Action,
+    Place,
     Aim,  //mouse
     Look, //controller
 }

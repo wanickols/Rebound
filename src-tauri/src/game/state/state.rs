@@ -2,6 +2,8 @@
 pub mod playerid;
 pub mod renderstate;
 
+use std::vec;
+
 pub use playerid::PlayerId;
 
 use serde::{Deserialize, Serialize};
@@ -17,6 +19,7 @@ pub struct InputState {
     pub action: bool,
     pub mouse_pos: (f32, f32),
     pub look_pos: (f32, f32),
+    pub place: bool,
 }
 
 impl InputState {
@@ -26,6 +29,7 @@ impl InputState {
             action: false,
             mouse_pos: (0.0, 0.0),
             look_pos: (0.0, 0.0),
+            place: false,
         }
     }
 }
@@ -58,22 +62,56 @@ pub struct State {
     pub is_static: bool,
     pub is_enabled: bool,
     pub is_trigger: bool,
+    pub is_alive: bool,
     pub friction: f32,
     pub restitution: f32,
     pub kind: Kind,
+    pub my_id: Option<usize>,
+    pub time_to_live: Option<u16>,
     pub team_id: Option<u8>,
     pub held_by: Option<PlayerId>,
     pub player_controller: Option<PlayerController>,
 }
 
 impl State {
-    //Public Functions
-    pub fn apply_friction(&mut self, dt: f32) {
+    //Internal update function for states
+    pub fn tick(&mut self, dt: f32, events: &mut EventQueue) {
+        if !self.is_alive {
+            return;
+        }
+
+        self.apply_friction(dt);
+        self.stop_if_tiny();
+
+        if let Some(ttl) = self.time_to_live {
+            println!("dying counter: {}", ttl);
+
+            if ttl <= 1 {
+                self.time_to_live = None;
+                self.die(events);
+            } else {
+                self.time_to_live = Some(ttl - 1);
+            }
+        }
+    }
+
+    //Tick Helpers
+    fn die(&mut self, events: &mut EventQueue) {
+        self.is_alive = false;
+        self.is_static = true;
+        println!("edddddded");
+        events.push(GameEvent::Die {
+            owner_id: self.held_by.unwrap(),
+            brick_index: self.my_id.unwrap(),
+        });
+    }
+
+    fn apply_friction(&mut self, dt: f32) {
         self.vx *= 1.0 - self.friction * dt;
         self.vy *= 1.0 - self.friction * dt;
     }
 
-    pub fn stop_if_tiny(&mut self) {
+    fn stop_if_tiny(&mut self) {
         if self.vx.abs() < 0.01 {
             self.vx = 0.0;
         }
@@ -82,6 +120,7 @@ impl State {
         }
     }
 
+    //Public Functions
     pub fn predict_position(&self, dt: f32) -> (f32, f32) {
         (self.x + self.vx * dt, self.y + self.vy * dt)
     }
@@ -191,7 +230,7 @@ impl State {
         }
     }
 
-    //Helper Functions
+    //Physics helper Functions
     fn bounds(&self) -> (f32, f32, f32, f32) {
         match &self.shape {
             Shape::Rectangle { w, h } => (self.x, self.y, self.x + w, self.y + h),
@@ -284,10 +323,6 @@ impl State {
         });
     }
 
-    pub fn set_enable(&mut self, enable: bool) {
-        self.is_enabled = enable;
-    }
-
     pub fn set_holding(&mut self, holding: bool) {
         if let Some(pc) = &mut self.player_controller {
             pc.is_holding = holding;
@@ -305,6 +340,10 @@ impl State {
             return Some(self.player_controller.as_ref().unwrap().player_id);
         }
         None
+    }
+
+    pub fn set_my_id(&mut self, id: usize) {
+        self.my_id = Some(id);
     }
 
     pub fn input(&mut self) -> &mut InputState {
@@ -325,9 +364,12 @@ impl State {
             is_static: false,
             is_enabled: true,
             is_trigger: false,
+            is_alive: true,
             friction: 0.0,
             restitution: 0.5,
             kind: Kind::Ball,
+            time_to_live: None,
+            my_id: None,
             team_id: None,
             held_by: None,
             player_controller: None,
@@ -371,14 +413,16 @@ impl State {
         s
     }
 
-    pub fn new_brick(x: f32, y: f32, w: f32) -> Self {
+    pub fn new_brick(x: f32, y: f32, w: f32, playerid: PlayerId) -> Self {
         let mut s = State::new();
         s.x = x;
         s.y = y;
         s.shape = Shape::Rectangle { w, h: w };
         s.kind = Kind::Brick;
         s.mass = 20.0;
-        s.is_static = true;
+        s.time_to_live = Some(7);
+        s.is_static = false;
+        s.held_by = Some(playerid);
         s
     }
 
