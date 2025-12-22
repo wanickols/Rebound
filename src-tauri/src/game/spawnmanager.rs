@@ -1,6 +1,4 @@
-use std::ops::Index;
-
-use crate::game::state::{self, Kind, PlayerId, State};
+use crate::game::state::{Kind, PlayerId, State};
 pub const PLAYER_POSITIONS: [(f32, f32); 8] = [
     (50.0, 50.0),
     (270.0, 50.0),
@@ -143,7 +141,6 @@ impl SpawnManager {
 
         if let Some(id) = player.get_player_id() {
             println!("Added player with ID: {} {}", id.0, id.1);
-            player.set_my_id(id.1);
             states.push(player);
             self.player_starts.push((x, y));
             Some(id)
@@ -155,7 +152,6 @@ impl SpawnManager {
 
     pub fn add_brick(&mut self, states: &mut Vec<State>, pos: (f32, f32), player_id: PlayerId) {
         let mut brick = State::new_brick(pos.0, pos.1, 8.0, player_id);
-        brick.set_my_id(states.len());
         states.push(brick);
     }
 

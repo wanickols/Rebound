@@ -2,7 +2,8 @@
 pub mod playerid;
 pub mod renderstate;
 
-use std::vec;
+#[path = "entityid.rs"]
+pub mod entityid;
 
 pub use playerid::PlayerId;
 
@@ -11,6 +12,7 @@ use serde::{Deserialize, Serialize};
 use crate::game::eventqueue::{EventQueue, GameEvent};
 use crate::game::input::PlayerController;
 use crate::game::physics::Physics;
+use crate::game::state::entityid::EntityId;
 use crate::game::util::Util;
 
 #[derive(Default, Clone, Deserialize)]
@@ -66,7 +68,7 @@ pub struct State {
     pub friction: f32,
     pub restitution: f32,
     pub kind: Kind,
-    pub my_id: Option<usize>,
+    pub entity_id: EntityId,
     pub time_to_live: Option<u16>,
     pub team_id: Option<u8>,
     pub held_by: Option<PlayerId>,
@@ -100,10 +102,6 @@ impl State {
         self.is_alive = false;
         self.is_static = true;
         println!("edddddded");
-        events.push(GameEvent::Die {
-            owner_id: self.held_by.unwrap(),
-            brick_index: self.my_id.unwrap(),
-        });
     }
 
     fn apply_friction(&mut self, dt: f32) {
@@ -342,10 +340,6 @@ impl State {
         None
     }
 
-    pub fn set_my_id(&mut self, id: usize) {
-        self.my_id = Some(id);
-    }
-
     pub fn input(&mut self) -> &mut InputState {
         let pc = self.player_controller.as_mut().unwrap();
         &mut pc.input
@@ -369,7 +363,7 @@ impl State {
             restitution: 0.5,
             kind: Kind::Ball,
             time_to_live: None,
-            my_id: None,
+            entity_id: EntityId::new(),
             team_id: None,
             held_by: None,
             player_controller: None,
