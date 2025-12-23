@@ -1,9 +1,6 @@
 use serde::Serialize;
 
-use crate::game::state::{
-    playerid::PlayerId,
-    {Kind, Shape, State},
-};
+use crate::game::state::{entityid::EntityId, Kind, Shape, State};
 
 #[derive(Serialize, Clone, Debug)]
 pub struct RenderState {
@@ -16,7 +13,7 @@ pub struct RenderState {
     pub is_static: bool,
     pub is_trigger: bool,
     pub kind: Kind,
-    pub player_id: Option<PlayerId>,
+    pub player_id: EntityId,
     pub team_id: Option<u8>,
 }
 
@@ -31,7 +28,7 @@ impl RenderState {
         is_static: bool,
         is_trigger: bool,
         kind: Kind,
-        player_id: Option<PlayerId>,
+        player_id: EntityId,
         team_id: Option<u8>,
     ) -> Self {
         Self {
@@ -62,7 +59,7 @@ impl From<&State> for RenderState {
             is_static: state.is_static,
             is_trigger: state.is_trigger,
             kind: state.kind,
-            player_id: state.get_player_id(),
+            player_id: state.entity_id,
             team_id: state.team_id,
         }
     }

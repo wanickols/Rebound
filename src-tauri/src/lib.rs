@@ -3,19 +3,19 @@ mod game;
 use crate::game::gamemanager::GameManager;
 use crate::game::gamepayload::GamePayload;
 use crate::game::input::{GameAction, InputValue};
-use crate::game::state::playerid::PlayerId;
+use crate::game::state::entityid::EntityId;
 
 use std::sync::{Arc, Mutex};
 use tauri::{Emitter, Manager};
 
 #[tauri::command]
 fn input_event(
-    id: (u32, usize),
+    id: u32,
     action: GameAction,
     value: InputValue,
     gm: tauri::State<Arc<Mutex<GameManager>>>,
 ) {
-    let player_id = PlayerId(id.0, id.1);
+    let player_id = EntityId(id);
     let mut gm = gm.lock().unwrap();
     gm.set_input(player_id, action, value);
 }
@@ -36,7 +36,7 @@ fn set_game_settings(
 }
 
 #[tauri::command]
-fn request_player_id(gm: tauri::State<Arc<Mutex<GameManager>>>) -> Option<PlayerId> {
+fn request_player_id(gm: tauri::State<Arc<Mutex<GameManager>>>) -> Option<EntityId> {
     let mut gm = gm.lock().unwrap();
 
     let pid = gm.try_get_new_player();
@@ -44,9 +44,9 @@ fn request_player_id(gm: tauri::State<Arc<Mutex<GameManager>>>) -> Option<Player
 }
 
 #[tauri::command]
-fn remove_player(id: (u32, usize), gm: tauri::State<Arc<Mutex<GameManager>>>) {
+fn remove_player(id: u32, gm: tauri::State<Arc<Mutex<GameManager>>>) {
     let mut gm = gm.lock().unwrap();
-    let player_id = PlayerId(id.0, id.1);
+    let player_id = EntityId(id);
     gm.remove_player(player_id);
 }
 

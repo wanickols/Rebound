@@ -1,11 +1,7 @@
-#[path = "playerid.rs"]
-pub mod playerid;
 pub mod renderstate;
 
 #[path = "entityid.rs"]
 pub mod entityid;
-
-pub use playerid::PlayerId;
 
 use serde::{Deserialize, Serialize};
 
@@ -71,7 +67,7 @@ pub struct State {
     pub entity_id: EntityId,
     pub time_to_live: Option<u16>,
     pub team_id: Option<u8>,
-    pub held_by: Option<PlayerId>,
+    pub held_by: Option<EntityId>,
     pub player_controller: Option<PlayerController>,
 }
 
@@ -333,13 +329,6 @@ impl State {
             .map_or(false, |pc| pc.is_holding)
     }
 
-    pub fn get_player_id(&self) -> Option<PlayerId> {
-        if self.player_controller.is_some() {
-            return Some(self.player_controller.as_ref().unwrap().player_id);
-        }
-        None
-    }
-
     pub fn input(&mut self) -> &mut InputState {
         let pc = self.player_controller.as_mut().unwrap();
         &mut pc.input
@@ -407,7 +396,7 @@ impl State {
         s
     }
 
-    pub fn new_brick(x: f32, y: f32, w: f32, playerid: PlayerId) -> Self {
+    pub fn new_brick(x: f32, y: f32, w: f32, entity_id: EntityId) -> Self {
         let mut s = State::new();
         s.x = x;
         s.y = y;
@@ -416,7 +405,7 @@ impl State {
         s.mass = 20.0;
         s.time_to_live = Some(7);
         s.is_static = false;
-        s.held_by = Some(playerid);
+        s.held_by = Some(entity_id);
         s
     }
 

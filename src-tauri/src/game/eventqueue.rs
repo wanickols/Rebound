@@ -1,4 +1,4 @@
-use crate::game::state::PlayerId;
+use crate::game::state::entityid::EntityId;
 
 #[derive(Debug, Clone)]
 pub enum GameEvent {
@@ -7,17 +7,17 @@ pub enum GameEvent {
     },
     ResetScore,
     TryGrab {
-        player_id: PlayerId,
+        player_id: EntityId,
     },
     Shoot {
-        player_id: PlayerId,
+        player_id: EntityId,
     },
     Place {
-        player_id: PlayerId,
+        player_id: EntityId,
         pos: (f32, f32),
     },
     Die {
-        owner_id: PlayerId,
+        owner_id: EntityId,
         brick_index: usize,
     },
 }

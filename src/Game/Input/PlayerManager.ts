@@ -3,10 +3,10 @@ import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
 import { Store } from "@tauri-apps/plugin-store";
 
-export type PlayerId = [number, number];
+export type EntityId = [number, number];
 
 export interface Player {
-  id: PlayerId; // still the full tuple
+  id: EntityId; // still the full tuple
   controllerIndex: number | null;
   keys: Record<string, boolean>;
   mouseDown?: boolean;
@@ -20,7 +20,7 @@ export class ReactivePlayerManager {
 
   constructor() {
     this.initStorage();
-    listen<PlayerId[]>("player-list", (event) => {
+    listen<EntityId[]>("player-list", (event) => {
       this.updateFromBackend(event.payload);
     });
   }
@@ -35,7 +35,7 @@ export class ReactivePlayerManager {
     }
   }
 
-  private updateFromBackend(newList: PlayerId[]) {
+  private updateFromBackend(newList: EntityId[]) {
     const newKeys = new Set(newList.map((id) => id[0]));
 
     // Remove players that disappeared
@@ -60,7 +60,7 @@ export class ReactivePlayerManager {
 
   async assignController(index: number) {
     // Request player ID from backend
-    const id = await invoke<PlayerId | null>("request_player_id");
+    const id = await invoke<EntityId | null>("request_player_id");
     if (!id) {
       console.warn("Failed to get player ID for controller", index);
       return;

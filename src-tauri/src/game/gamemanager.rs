@@ -1,12 +1,11 @@
-use crate::end_game;
 use crate::game::eventqueue::{EventQueue, GameEvent};
-use crate::game::input::{
-    playercontroller, GameAction, GameActionEvent, InputValue, PlayerController,
-};
+use crate::game::input::{GameAction, GameActionEvent, InputValue};
 use crate::game::physics::Physics;
-use crate::game::scoremanager::{self, ScoreManager, Team};
+use crate::game::scoremanager::{ScoreManager, Team};
 use crate::game::spawnmanager::SpawnManager;
-use crate::game::state::{playerid, PlayerId, State};
+use crate::game::state::State;
+
+use crate::game::state::entityid::EntityId;
 use crate::game::util::Util;
 use std::collections::HashMap;
 
@@ -23,13 +22,13 @@ pub enum GamePhase {
 
 pub struct GameManager {
     pub states: Vec<State>,
-    pending_inputs: HashMap<PlayerId, Vec<GameActionEvent>>,
+    pending_inputs: HashMap<EntityId, Vec<GameActionEvent>>,
     pub app: AppHandle,
     pub phase: GamePhase,
     pub event_queue: EventQueue,
     pub score_manager: ScoreManager,
     pub spawn_manager: SpawnManager,
-    pub player_list: Vec<PlayerId>,
+    pub player_list: Vec<EntityId>,
 }
 
 pub const GRAB_RADIUS: f32 = 32.0;
@@ -66,7 +65,7 @@ impl GameManager {
         gm
     }
 
-    pub fn set_input(&mut self, player: PlayerId, action: GameAction, value: InputValue) {
+    pub fn set_input(&mut self, player: EntityId, action: GameAction, value: InputValue) {
         self.pending_inputs
             .entry(player)
             .or_default()
@@ -100,17 +99,17 @@ impl GameManager {
         self.player_list.clear();
     }
 
-    pub fn try_get_new_player(&mut self) -> Option<PlayerId> {
+    pub fn try_get_new_player(&mut self) -> Option<EntityId> {
         let id = self
             .spawn_manager
             .add_single_player(&mut self.states, &mut self.player_list);
-        if (id.is_some()) {
+        if id.is_some() {
             self.update_player_list();
         }
         return id;
     }
 
-    pub fn remove_player(&mut self, id: PlayerId) {
+    pub fn remove_player(&mut self, id: EntityId) {
         self.spawn_manager
             .remove_player(&mut self.states, id, &mut self.player_list);
         self.update_player_list();
@@ -140,7 +139,7 @@ impl GameManager {
                 GameEvent::TryGrab { player_id } => {
                     if let Some(ball_idx) = self.spawn_manager.get_ball_index() {
                         let (ball, player) = Util::two_mut(&mut self.states, ball_idx, player_id.1);
-                        if (ball.held_by.is_some()) {
+                        if ball.held_by.is_some() {
                             return;
                         }
                         let dx = ball.x - player.x;
@@ -204,11 +203,7 @@ impl GameManager {
             GamePhase::Playing => {
                 //Apply physics
                 for (&player_id, events) in &self.pending_inputs {
-                    if let Some(state) = self
-                        .states
-                        .iter_mut()
-                        .find(|s| s.get_player_id() == Some(player_id))
-                    {
+                    if let Some(state) = self.states.iter_mut().find(|s| s.entity_id == player_id) {
                         for event in events {
                             let input = state.input();
                             match event.action {

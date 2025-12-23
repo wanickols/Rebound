@@ -1,5 +1,5 @@
 use crate::game::eventqueue::{EventQueue, GameEvent};
-use crate::game::state::PlayerId;
+use crate::game::state::entityid::EntityId;
 use crate::game::state::{InputState, State};
 
 #[derive(Clone)]
@@ -13,7 +13,7 @@ pub struct PlayerController {
     curr_brick_count: u8,
     max_bricks: u8,
     pub is_holding: bool,
-    pub player_id: PlayerId,
+    pub player_id: EntityId,
     pub input: InputState,
 }
 
@@ -30,7 +30,7 @@ impl PlayerController {
             max_bricks: 3,
             mouse_pos: (0.0, 0.0),
             input: InputState::new(),
-            player_id: PlayerId::new(index),
+            player_id: EntityId::new(),
         }
     }
 

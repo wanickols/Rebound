@@ -1,4 +1,4 @@
-use crate::game::state::{Kind, PlayerId, State};
+use crate::game::state::{EntityId, Kind, State};
 pub const PLAYER_POSITIONS: [(f32, f32); 8] = [
     (50.0, 50.0),
     (270.0, 50.0),
@@ -37,8 +37,8 @@ impl SpawnManager {
     pub fn add_single_player(
         &mut self,
         states: &mut Vec<State>,
-        player_list: &mut Vec<PlayerId>,
-    ) -> Option<PlayerId> {
+        player_list: &mut Vec<EntityId>,
+    ) -> Option<EntityId> {
         let id = self.curr_player_count;
         if id >= self.player_count {
             println!("Max players reached!");
@@ -55,8 +55,8 @@ impl SpawnManager {
     pub fn remove_player(
         &mut self,
         states: &mut Vec<State>,
-        player_id: PlayerId,
-        player_list: &mut Vec<PlayerId>,
+        player_id: EntityId,
+        player_list: &mut Vec<EntityId>,
     ) {
         states.remove(player_id.1);
         player_list.remove(player_id.1);
@@ -136,11 +136,11 @@ impl SpawnManager {
 
     ///Private
     //Add Functions:
-    pub fn add_player(&mut self, states: &mut Vec<State>, x: f32, y: f32) -> Option<PlayerId> {
+    pub fn add_player(&mut self, states: &mut Vec<State>, x: f32, y: f32) -> Option<EntityId> {
         let mut player = State::new_player(x, y, states.len());
 
-        if let Some(id) = player.get_player_id() {
-            println!("Added player with ID: {} {}", id.0, id.1);
+        if let id = player.entity_id {
+            println!("Added player with ID: {}", id.0);
             states.push(player);
             self.player_starts.push((x, y));
             Some(id)
@@ -150,7 +150,7 @@ impl SpawnManager {
         }
     }
 
-    pub fn add_brick(&mut self, states: &mut Vec<State>, pos: (f32, f32), player_id: PlayerId) {
+    pub fn add_brick(&mut self, states: &mut Vec<State>, pos: (f32, f32), player_id: EntityId) {
         let mut brick = State::new_brick(pos.0, pos.1, 8.0, player_id);
         states.push(brick);
     }
