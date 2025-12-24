@@ -18,7 +18,7 @@ pub struct PlayerController {
 }
 
 impl PlayerController {
-    pub fn new(accel: f32, max_speed: f32, index: usize) -> Self {
+    pub fn new(accel: f32, max_speed: f32) -> Self {
         Self {
             accel,
             max_speed,

@@ -265,7 +265,7 @@ impl State {
         }
     }
 
-    /// Compute the minimum-penetration axis for simple arcade collisions
+    // Compute the minimum-penetration axis for simple arcade collisions
     pub fn compute_min_axis_overlap(&self, other: &State) -> (f32, f32, f32) {
         // Extract sizes from shapes
         let (aw, ah, ax_center, ay_center) = match &self.shape {
@@ -310,6 +310,8 @@ impl State {
         }
     }
 
+
+    ///Handling triggers and interactions
     fn trigger_score(&self, events: &mut EventQueue) {
         println!("Trigggered");
         events.push(GameEvent::GoalScored {
@@ -371,7 +373,7 @@ impl State {
         s
     }
 
-    pub fn new_player(x: f32, y: f32, index: usize) -> Self {
+    pub fn new_player(x: f32, y: f32) -> Self {
         let mut s = State::new();
         s.x = x;
         s.y = y;
@@ -380,7 +382,7 @@ impl State {
         s.friction = 20.0;
         s.restitution = 0.6;
         s.kind = Kind::Player;
-        s.player_controller = Some(PlayerController::new(75.0, 400.0, index));
+        s.player_controller = Some(PlayerController::new(75.0, 400.0));
         s
     }
 

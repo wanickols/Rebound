@@ -1,15 +1,15 @@
-use crate::game::{eventqueue::EventQueue, state::State, util::Util};
+use crate::game::{eventqueue::EventQueue, state::State, util::Util, world::World};
 
 pub struct Physics;
 
 impl Physics {
-    pub fn update(states: &mut Vec<State>, dt: f32, events: &mut EventQueue) {
-        for i in 0..states.len() {
-            if states[i].is_static || Physics::update_held_object(states, i, dt, events) {
+    pub fn update(world: &mut World, dt: f32, events: &mut EventQueue) {
+        for i in 0..world.entities.len() {
+            if world.entities[i].is_static || Physics::update_held_object(world, i, dt, events) {
                 continue;
             }
 
-            let s = &mut states[i];
+            let s = &mut world.entities[i];
 
             if let Some(controller) = &mut s.player_controller {
                 let (x, y, vx, vy, angle) = controller.apply_input(s.x, s.y, s.vx, s.vy, events);
@@ -27,24 +27,25 @@ impl Physics {
 
             let (next_x, next_y) = s.predict_position(dt);
 
-            for j in 0..states.len() {
+            for j in 0..world.entities.len() {
                 if i == j {
                     continue;
                 }
 
-                if states[j].held_by.is_some() {
-                    if states[i].is_holding() {
+                if world.entities[j].held_by.is_some() {
+                    if world.entities[i].is_holding() {
                         continue;
                     }
                 }
 
-                if !states[i].check_collision_predicted(&states[j], next_x, next_y) {
+                if !world.entities[i].check_collision_predicted(&world.entities[j], next_x, next_y)
+                {
                     continue;
                 }
 
-                State::handle_collision(states, i, j, events);
+                State::handle_collision(&mut world.entities, i, j, events);
             }
-            states[i].update_position(dt);
+            world.entities[i].update_position(dt);
         }
     }
 
@@ -55,57 +56,63 @@ impl Physics {
 
     //Yeah prob not best
     pub fn update_held_object(
-        states: &mut Vec<State>,
+        world: &mut World,
         i: usize,
         dt: f32,
         events: &mut EventQueue,
     ) -> bool {
-        if let Some(holder_id) = states[i].held_by {
-            let (held, holder) = Util::two_mut(states, i, holder_id.1);
+        if let Some(holder_id) = world.entities[i].held_by {
+            if let Some((held, holder)) =
+                world.grab_two_entities(world.entities[i].entity_id, holder_id)
+            {
+                let max_distance = 40.0;
+                let hold_distance = 20.0; // target in front of player
+                let follow_strength = 0.2;
+                let velocity_damping = 0.6;
 
-            let max_distance = 40.0;
-            let hold_distance = 20.0; // target in front of player
-            let follow_strength = 0.2;
-            let velocity_damping = 0.6;
+                // compute target position in front of player
+                let target_x = holder.x + holder.angle.cos() * hold_distance;
+                let target_y = holder.y + holder.angle.sin() * hold_distance;
 
-            // compute target position in front of player
-            let target_x = holder.x + holder.angle.cos() * hold_distance;
-            let target_y = holder.y + holder.angle.sin() * hold_distance;
+                // calculate distance to ball
+                let dx = target_x - held.x;
+                let dy = target_y - held.y;
+                let distance_sq = dx * dx + dy * dy;
 
-            // calculate distance to ball
-            let dx = target_x - held.x;
-            let dy = target_y - held.y;
-            let distance_sq = dx * dx + dy * dy;
-
-            // if too far, drop the ball
-            if distance_sq > max_distance * max_distance {
-                held.held_by = None; // drop
-                holder.set_holding(false);
-                return false;
-            }
-
-            // smooth follow
-            held.x += dx * follow_strength;
-            held.y += dy * follow_strength;
-
-            // damp velocity
-            held.vx *= velocity_damping;
-            held.vy *= velocity_damping;
-
-            let (next_x, next_y) = held.predict_position(dt);
-
-            // Check triggers (goal zones, sensors, etc.)
-            for j in 0..states.len() {
-                if j != i && j != holder_id.1 {
-                    if !states[i].check_collision_predicted(&states[j], next_x, next_y) {
-                        continue;
-                    }
-
-                    State::handle_pure_trigger(states, i, j, events);
+                // if too far, drop the ball
+                if distance_sq > max_distance * max_distance {
+                    held.held_by = None; // drop
+                    holder.set_holding(false);
+                    return false;
                 }
-            }
 
-            return true;
+                // smooth follow
+                held.x += dx * follow_strength;
+                held.y += dy * follow_strength;
+
+                // damp velocity
+                held.vx *= velocity_damping;
+                held.vy *= velocity_damping;
+
+                let (next_x, next_y) = held.predict_position(dt);
+
+                // Check triggers (goal zones, sensors, etc.)
+                for j in 0..world.entities.len() {
+                    if j != i && world.entities[j].entity_id != holder_id {
+                        if !world.entities[i].check_collision_predicted(
+                            &world.entities[j],
+                            next_x,
+                            next_y,
+                        ) {
+                            continue;
+                        }
+
+                        State::handle_pure_trigger(&mut world.entities, i, j, events);
+                    }
+                }
+
+                return true;
+            }
         }
         false
     }

@@ -10,4 +10,8 @@ pub mod spawnmanager;
 
 #[path = "state/state.rs"]
 pub mod state;
+
+#[path = "state/world.rs"]
+pub mod world;
+
 pub mod util;

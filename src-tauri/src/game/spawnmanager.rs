@@ -1,4 +1,6 @@
-use crate::game::state::{EntityId, Kind, State};
+use crate::game::state::entityid::EntityId;
+use crate::game::state::{Kind, State};
+use crate::game::world::World;
 pub const PLAYER_POSITIONS: [(f32, f32); 8] = [
     (50.0, 50.0),
     (270.0, 50.0),
@@ -13,9 +15,8 @@ pub const PLAYER_POSITIONS: [(f32, f32); 8] = [
 pub struct SpawnManager {
     player_starts: Vec<(f32, f32)>,
     ball_start: Option<(f32, f32)>,
-    ball_index: Option<usize>,
-    player_count: u8,
-    curr_player_count: u8,
+    ball_id: Option<EntityId>,
+    max_player_count: u8,
     pub width: f32,
     pub height: f32,
 }
@@ -26,86 +27,68 @@ impl SpawnManager {
         Self {
             player_starts: Vec::new(),
             ball_start: None,
-            ball_index: None,
-            player_count: 1,
-            curr_player_count: 0,
+            ball_id: None,
+            max_player_count: 1,
             width,
             height,
         }
     }
 
-    pub fn add_single_player(
-        &mut self,
-        states: &mut Vec<State>,
-        player_list: &mut Vec<EntityId>,
-    ) -> Option<EntityId> {
-        let id = self.curr_player_count;
-        if id >= self.player_count {
+    pub fn try_add_player(&mut self, world: &mut World) -> Option<EntityId> {
+        let count = world.curr_player_count();
+        if count >= self.max_player_count.into() {
             println!("Max players reached!");
             return None;
         }
 
-        let (x, y) = PLAYER_POSITIONS[id as usize];
-        let player_id = self.add_player(states, x, y)?;
-        self.curr_player_count += 1;
-        player_list.push(player_id);
+        let (x, y) = PLAYER_POSITIONS[count];
+        let player_id = self.add_player(world, x, y);
         Some(player_id)
     }
 
-    pub fn remove_player(
-        &mut self,
-        states: &mut Vec<State>,
-        player_id: EntityId,
-        player_list: &mut Vec<EntityId>,
-    ) {
-        states.remove(player_id.1);
-        player_list.remove(player_id.1);
-        self.curr_player_count -= 1;
+    pub fn remove_player(&mut self, world: &mut World, player_id: EntityId) {
+        world.remove_player(player_id);
     }
 
-    pub fn remove_all(&mut self, states: &mut Vec<State>) {
-        states.clear();
-        self.player_count = 1;
-        self.curr_player_count = 0;
-        self.ball_index = None;
+    pub fn remove_all(&mut self, world: &mut World) {
+        world.remove_all();
+        self.max_player_count = 1;
+        self.ball_id = None;
     }
 
-    pub fn remove_non_player(&mut self, states: &mut Vec<State>) {
-        states.truncate(self.curr_player_count as usize);
-        self.player_count = 1;
-        self.ball_index = None;
+    pub fn remove_non_player(&mut self, world: &mut World) {
+        world.remove_all_non_players();
+        self.ball_id = None;
     }
 
     ///Public Functions
-    pub fn spawn_states(&mut self, states: &mut Vec<State>) {
+    pub fn spawn_states(&mut self, world: &mut World) {
         //Borders
-        self.create_borders(states);
+        self.create_borders(world);
         // Ball
-        self.add_ball(states, 160.0, 90.0); // center
-
-        // Goals
-        self.add_goal(states, 0.0, 60.0, 0);
-        self.add_goal(states, 290.0, 60.0, 1);
+        self.add_ball(world, 160.0, 90.0); // center
+                                           // Goals
+        self.add_goal(world, 0.0, 60.0, 0);
+        self.add_goal(world, 290.0, 60.0, 1);
     }
 
-    fn create_borders(&mut self, states: &mut Vec<State>) {
+    fn create_borders(&mut self, world: &mut World) {
         let thickness = 10.0; // wall thickness
 
         // Top wall
-        states.push(State::new_wall(0.0, -thickness, self.width, thickness));
-
+        world.add_entity(State::new_wall(0.0, -thickness, self.width, thickness));
         // Bottom wall
-        states.push(State::new_wall(0.0, self.height, self.width, thickness));
+        world.add_entity(State::new_wall(0.0, self.height, self.width, thickness));
 
         // Left wall
-        states.push(State::new_wall(-thickness, 0.0, thickness, self.height));
+        world.add_entity(State::new_wall(-thickness, 0.0, thickness, self.height));
 
         // Right wall
-        states.push(State::new_wall(self.width, 0.0, thickness, self.height));
+        world.add_entity(State::new_wall(self.width, 0.0, thickness, self.height));
     }
 
-    pub fn reset_states(&self, states: &mut Vec<State>) {
-        for state in states.iter_mut() {
+    pub fn reset_states(&self, world: &mut World) {
+        for state in world.entities.iter_mut() {
             if state.is_static {
                 continue;
             }
@@ -121,7 +104,7 @@ impl SpawnManager {
                     }
                 }
                 Kind::Player => {
-                    let idx = state.get_player_id().unwrap().0 as usize;
+                    let idx = state.entity_id.0 as usize;
                     let (px, py) = self.player_starts[idx];
                     state.x = px;
                     state.y = py;
@@ -136,45 +119,43 @@ impl SpawnManager {
 
     ///Private
     //Add Functions:
-    pub fn add_player(&mut self, states: &mut Vec<State>, x: f32, y: f32) -> Option<EntityId> {
-        let mut player = State::new_player(x, y, states.len());
+    pub fn add_player(&mut self, world: &mut World, x: f32, y: f32) -> EntityId {
+        let player = State::new_player(x, y);
 
-        if let id = player.entity_id {
-            println!("Added player with ID: {}", id.0);
-            states.push(player);
-            self.player_starts.push((x, y));
-            Some(id)
-        } else {
-            println!("Player has no ID!");
-            None
-        }
+        let id = player.entity_id;
+        println!("Added player with ID: {}", id.0);
+        world.add_entity(player);
+        self.player_starts.push((x, y));
+        id
     }
 
-    pub fn add_brick(&mut self, states: &mut Vec<State>, pos: (f32, f32), player_id: EntityId) {
-        let mut brick = State::new_brick(pos.0, pos.1, 8.0, player_id);
-        states.push(brick);
+    pub fn add_brick(&mut self, world: &mut World, pos: (f32, f32), player_id: EntityId) {
+        let brick = State::new_brick(pos.0, pos.1, 8.0, player_id);
+        world.add_entity(brick);
     }
 
-    pub fn remove_brick(&mut self, states: &mut Vec<State>, index: usize) {
-        states.remove(index);
+    pub fn remove_brick(&mut self, world: &mut World, entityid: EntityId) {
+        world.remove_entity(entityid);
     }
 
-    fn add_ball(&mut self, states: &mut Vec<State>, x: f32, y: f32) {
-        states.push(State::new_ball(x, y));
+    fn add_ball(&mut self, world: &mut World, x: f32, y: f32) {
+        let ball = State::new_ball(x, y);
+        self.ball_id = Some(ball.entity_id);
+        world.add_entity(ball);
+
         self.ball_start = Some((x, y));
-        self.ball_index = Some(states.len() - 1);
     }
 
-    fn add_goal(&mut self, states: &mut Vec<State>, x: f32, y: f32, team_id: u8) {
-        states.push(State::new_goal(x, y, 30.0, 60.0, team_id));
+    fn add_goal(&mut self, world: &mut World, x: f32, y: f32, team_id: u8) {
+        world.add_entity(State::new_goal(x, y, 30.0, 60.0, team_id));
     }
 
     ///Getters and Setters
     pub fn set_player_count(&mut self, player_count: u8) {
-        self.player_count = player_count;
+        self.max_player_count = player_count;
     }
 
-    pub fn get_ball_index(&self) -> Option<usize> {
-        return self.ball_index;
+    pub fn get_ball_id(&self) -> Option<EntityId> {
+        return self.ball_id;
     }
 }

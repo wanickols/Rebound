@@ -25,6 +25,6 @@ impl GamePayload {
 
 impl From<&GameManager> for GamePayload {
     fn from(gm: &GameManager) -> Self {
-        GamePayload::new(&gm.states, &gm.score_manager, &gm.phase)
+        GamePayload::new(&gm.world.entities, &gm.score_manager, &gm.phase)
     }
 }

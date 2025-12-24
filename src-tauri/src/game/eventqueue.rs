@@ -18,7 +18,7 @@ pub enum GameEvent {
     },
     Die {
         owner_id: EntityId,
-        brick_index: usize,
+        brick_id: EntityId,
     },
 }
 
