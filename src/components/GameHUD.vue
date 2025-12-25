@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount } from "vue";
 import { bus } from "@/utils/EventBus";
-import { Player, playerManager } from "@/Game/Input/PlayerManager";
 import { ControllerManager, GamepadData } from "@/Game/Input/ControllerManager";
-import { KeyboardManager } from "@/Game/Input/KeyboardManager";
 import { InputManager } from "@/Game/Input/InputManager";
 import ScoreCounter from "./ScoreCounter.vue";
 import GameCanvas from "@/components/GameCanvas.vue";
@@ -17,10 +15,9 @@ let intervalId: number;
 
 onMounted(() => {
   bus.on("gamepadEvent", onGamepadEvent);
-  bus.on("keyboardEvent", onKeyboardEvent);
 
-  bus.on("controllerAvailable", onControllerAvailable);
-  bus.on("controllerRemoved", onControllerRemoved);
+  bus.on("controllerConnected", onControllerAvailable);
+  bus.on("controllerDisconnected", onControllerRemoved);
 
   intervalId = window.setInterval(() => {
     controllerManager.pollGamepads();
@@ -29,7 +26,6 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   bus.off("gamepadEvent", onGamepadEvent);
-  bus.off("keyboardEvent", onKeyboardEvent);
   clearInterval(intervalId);
 });
 
@@ -37,16 +33,12 @@ function onGamepadEvent(gamepad: GamepadData) {
   inputManager.handleGamepadEvent(gamepad);
 }
 
-function onKeyboardEvent(player: Player) {
-  inputManager.handleKeyboardEvent(player);
-}
-
 function onControllerAvailable(index: number) {
-  playerManager.assignController(index);
+  inputManager.onControllerConnected(index);
 }
 
 function onControllerRemoved(index: number) {
-  playerManager.removeController(index);
+  inputManager.onControllerDisconnected(index);
 }
 </script>
 

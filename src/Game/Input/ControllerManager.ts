@@ -7,50 +7,37 @@ export interface GamepadData {
   axes: number[];
   buttons: boolean[];
 }
-
 export class ControllerManager {
-  constructor() {
-    window.addEventListener("gamepadconnected", (e) => this.onGamepad(e));
-    window.addEventListener("gamepaddisconnected", (e) =>
-      this.onGamepadDisconnect(e)
-    );
-  }
-  knownPads: Set<number> = new Set();
+  private knownPads = new Set<number>();
 
   pollGamepads() {
     const pads = navigator.getGamepads();
-    for (let i = 0; i < pads.length; i++) {
-      const pad = pads[i];
+
+    for (const pad of pads) {
       if (!pad) continue;
 
-      const padData: GamepadData = {
+      // Newly discovered controller
+      if (!this.knownPads.has(pad.index)) {
+        this.knownPads.add(pad.index);
+        console.log("Controller connected:", pad.index);
+        bus.emit("controllerConnected", pad.index);
+      }
+
+      // Always emit input
+      bus.emit("gamepadEvent", {
         index: pad.index,
         id: pad.id,
         axes: [...pad.axes],
         buttons: pad.buttons.map((b) => b.pressed),
-      };
+      });
+    }
 
-      if (!this.knownPads.has(pad.index)) {
-        this.knownPads.add(pad.index);
-        bus.emit("controllerAvailable", pad.index);
-      } else {
-        bus.emit("gamepadEvent", padData);
+    // Detect disconnects
+    for (const idx of [...this.knownPads]) {
+      if (!pads[idx]) {
+        this.knownPads.delete(idx);
+        bus.emit("controllerDisconnected", idx);
       }
-    }
-  }
-
-  onGamepad(e: GamepadEvent) {
-    if (!this.knownPads.has(e.gamepad.index)) {
-      this.knownPads.add(e.gamepad.index);
-      bus.emit("controllerAvailable", e.gamepad.index);
-    }
-  }
-
-  onGamepadDisconnect(e: GamepadEvent) {
-    const idx = e.gamepad.index;
-    if (this.knownPads.has(idx)) {
-      this.knownPads.delete(idx);
-      bus.emit("controllerRemoved", idx);
     }
   }
 }

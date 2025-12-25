@@ -63,16 +63,6 @@ function resizeCanvas() {
   canvas.value.style.height = `${GAME_HEIGHT * scale}px`;
 }
 
-function onMouseMove(e: MouseEvent) {
-  if (!canvas.value) return;
-  const rect = canvas.value.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  const y = e.clientY - rect.top;
-
-  //let scale = renderer.getScale();
-  //inputManager.inputManager.setScale(scale);
-  props.inputManager.handleMouseMove(x, y);
-}
 </script>
 
 <template>

@@ -40,6 +40,7 @@ fn request_player_id(gm: tauri::State<Arc<Mutex<GameManager>>>) -> Option<Entity
     let mut gm = gm.lock().unwrap();
 
     let pid = gm.try_get_new_player();
+    println!("Sending player id: {:?}", pid);
     pid
 }
 

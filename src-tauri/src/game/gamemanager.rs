@@ -98,6 +98,7 @@ impl GameManager {
     pub fn try_get_new_player(&mut self) -> Option<EntityId> {
         let id = self.spawn_manager.try_add_player(&mut self.world);
         if id.is_some() {
+            println!("Added new player with id {:?}", id);
             self.update_player_list();
         }
         return id;
