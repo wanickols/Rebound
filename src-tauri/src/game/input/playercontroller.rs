@@ -1,6 +1,6 @@
 use crate::game::eventqueue::{EventQueue, GameEvent};
 use crate::game::state::entityid::EntityId;
-use crate::game::state::{InputState, State};
+use crate::game::state::{InputState};
 
 #[derive(Clone)]
 pub struct PlayerController {
@@ -8,7 +8,6 @@ pub struct PlayerController {
     last_angle: f32,
     max_speed: f32,
     action_toggle: bool,
-    mouse_pos: (f32, f32),
     prev_action: bool,
     curr_brick_count: u8,
     max_bricks: u8,
@@ -18,7 +17,7 @@ pub struct PlayerController {
 }
 
 impl PlayerController {
-    pub fn new(accel: f32, max_speed: f32) -> Self {
+    pub fn new(accel: f32, max_speed: f32, player_id: EntityId) -> Self {
         Self {
             accel,
             max_speed,
@@ -28,9 +27,8 @@ impl PlayerController {
             curr_brick_count: 0,
             last_angle: 0.0,
             max_bricks: 3,
-            mouse_pos: (0.0, 0.0),
             input: InputState::new(),
-            player_id: EntityId::new(),
+            player_id: player_id,
         }
     }
 

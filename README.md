@@ -4,6 +4,7 @@ This project is in active development, and I'm not organized enough to have a bu
 
 ## Todo:
 
-Rebuild/refactor around the entity ID model
+Get bricks working
 
-- fix frontend to use entity id instead of player id
+- Have bricks spawn 3 per player
+- Have bricks kill themselves

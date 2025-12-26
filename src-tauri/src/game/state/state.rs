@@ -381,7 +381,7 @@ impl State {
         s.friction = 20.0;
         s.restitution = 0.6;
         s.kind = Kind::Player;
-        s.player_controller = Some(PlayerController::new(75.0, 400.0));
+        s.player_controller = Some(PlayerController::new(75.0, 400.0, s.entity_id));
         s
     }
 

@@ -133,7 +133,7 @@ impl GameManager {
                 GameEvent::TryGrab { player_id } => {
                     if let Some(ball_id) = self.spawn_manager.get_ball_id() {
                         if let Some((ball, player)) =
-                            self.world.grab_two_entities(player_id, ball_id)
+                            self.world.grab_two_entities(ball_id, player_id)
                         {
                             if ball.held_by.is_some() {
                                 return;
@@ -143,6 +143,7 @@ impl GameManager {
 
                             if dx * dx + dy * dy < GRAB_RADIUS.powi(2) {
                                 ball.held_by = Some(player_id);
+                                player.set_holding(true);
                             }
                         }
                     }
@@ -150,10 +151,11 @@ impl GameManager {
                 GameEvent::Shoot { player_id } => {
                     if let Some(ball_id) = self.spawn_manager.get_ball_id() {
                         if let Some((ball, player)) =
-                            self.world.grab_two_entities(player_id, ball_id)
+                            self.world.grab_two_entities(ball_id, player_id)
                         {
                             // Only shoot if this player is actually holding the ball
                             if ball.held_by != Some(player_id) {
+                                println!("Ball held by: {:?}, cannot shoot", ball.held_by);
                                 return; // not holding, can't shoot
                             }
 

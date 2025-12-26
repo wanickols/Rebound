@@ -61,6 +61,7 @@ export class InputManager {
     // otherwise, ask backend to create one
     const id = await invoke<PlayerId | null>("request_player_id");
     if (id !== null) {
+      console.log("Assigned new player ID", id, "to controller", index);
       this.players.add(id);
       this.bindings.set(index, id);
     }

@@ -66,7 +66,7 @@ impl Physics {
                 world.grab_two_entities(world.entities[i].entity_id, holder_id)
             {
                 let max_distance = 40.0;
-                let hold_distance = 20.0; // target in front of player
+                let hold_distance = 16.0; // target in front of player
                 let follow_strength = 0.2;
                 let velocity_damping = 0.6;
 

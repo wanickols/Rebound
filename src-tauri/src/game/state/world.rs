@@ -89,6 +89,7 @@ impl World {
     ) -> Option<(&mut State, &mut State)> {
         let i = *self.entity_map.get(&id1)?;
         let j = *self.entity_map.get(&id2)?;
+
         Some(Util::two_mut(&mut self.entities, i, j))
     }
 
