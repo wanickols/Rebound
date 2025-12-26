@@ -82,7 +82,7 @@ impl State {
         self.stop_if_tiny();
 
         if let Some(ttl) = self.time_to_live {
-            println!("dying counter: {}", ttl);
+            //println!("dying counter: {}", ttl);
 
             if ttl <= 1 {
                 self.time_to_live = None;
@@ -309,7 +309,6 @@ impl State {
             _ => {}
         }
     }
-
 
     ///Handling triggers and interactions
     fn trigger_score(&self, events: &mut EventQueue) {

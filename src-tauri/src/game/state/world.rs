@@ -67,6 +67,10 @@ impl World {
                 self.remove_entity(id);
             }
         }
+        println!(
+            "Removed all non-player entities. Remaining entities: {}",
+            self.entities.len()
+        );
     }
 
     //gets

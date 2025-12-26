@@ -13,7 +13,6 @@ pub const PLAYER_POSITIONS: [(f32, f32); 8] = [
 ];
 
 pub struct SpawnManager {
-    player_starts: Vec<(f32, f32)>,
     ball_start: Option<(f32, f32)>,
     ball_id: Option<EntityId>,
     max_player_count: u8,
@@ -25,7 +24,6 @@ impl SpawnManager {
     //Constructor
     pub fn new(width: f32, height: f32) -> Self {
         Self {
-            player_starts: Vec::new(),
             ball_start: None,
             ball_id: None,
             max_player_count: 1,
@@ -88,6 +86,7 @@ impl SpawnManager {
     }
 
     pub fn reset_states(&self, world: &mut World) {
+        let mut player_index = 0;
         for state in world.entities.iter_mut() {
             if state.is_static {
                 continue;
@@ -104,13 +103,13 @@ impl SpawnManager {
                     }
                 }
                 Kind::Player => {
-                    let idx = state.entity_id.0 as usize;
-                    let (px, py) = self.player_starts[idx];
+                    let (px, py) = PLAYER_POSITIONS[player_index];
                     state.x = px;
                     state.y = py;
                     state.held_by = None;
                     state.vx = 0.0;
                     state.vy = 0.0;
+                    player_index += 1;
                 }
                 _ => {}
             }
@@ -124,8 +123,7 @@ impl SpawnManager {
 
         let id = player.entity_id;
         println!("Added player with ID: {}", id.0);
-        world.add_entity(player);
-        self.player_starts.push((x, y));
+        world.add_player(player);
         id
     }
 

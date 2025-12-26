@@ -49,12 +49,10 @@ impl PlayerController {
         let mut angle = self.handle_look(self.input.look_pos);
 
         //If look does nothing, see if aiming is a thing
-        if angle.is_none() {
-            angle = self.handle_aim((x, y));
-            if angle.is_none() {
-                angle = Some(0.0);
-            }
+        if angle.is_some() {
             self.last_angle = angle.unwrap();
+        } else {
+            angle = Some(self.last_angle);
         }
 
         //handle actions
@@ -107,40 +105,16 @@ impl PlayerController {
         }
     }
 
-    fn handle_aim(&mut self, player_pos: (f32, f32)) -> Option<f32> {
-        let mouse_pos = self.input.mouse_pos;
-        if mouse_pos == self.mouse_pos {
-            return Some(self.last_angle);
-        }
-
-        let dx = mouse_pos.0 - player_pos.0;
-        let dy = mouse_pos.1 - player_pos.1;
-        let angle = dy.atan2(dx);
-
-        self.mouse_pos = mouse_pos;
-        println!(
-            "[AIM] player=({:.2}, {:.2}) mouse=({:.2}, {:.2}) -> angle={:.3} rad ({:.1}°)",
-            player_pos.0,
-            player_pos.1,
-            mouse_pos.0,
-            mouse_pos.1,
-            angle,
-            angle.to_degrees()
-        );
-
-        Some(angle)
-    }
-
     fn handle_look(&mut self, dir: (f32, f32)) -> Option<f32> {
         if dir.0 != 0.0 || dir.1 != 0.0 {
             let angle = dir.1.atan2(dir.0);
-            println!(
-                "[LOOK] dir=({:.2}, {:.2}) -> angle={:.3} rad ({:.1}°)",
-                dir.0,
-                dir.1,
-                angle,
-                angle.to_degrees()
-            );
+            // println!(
+            //     "[LOOK] dir=({:.2}, {:.2}) -> angle={:.3} rad ({:.1}°)",
+            //     dir.0,
+            //     dir.1,
+            //     angle,
+            //     angle.to_degrees()
+            // );
             return Some(angle);
         }
         None
