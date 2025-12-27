@@ -1,6 +1,8 @@
 use crate::game::eventqueue::{EventQueue, GameEvent};
 use crate::game::state::entityid::EntityId;
-use crate::game::state::{InputState};
+use crate::game::state::InputState;
+
+const PLACE_COOLDOWN_TICKS: u16 = 10;
 
 #[derive(Clone)]
 pub struct PlayerController {
@@ -11,6 +13,7 @@ pub struct PlayerController {
     prev_action: bool,
     curr_brick_count: u8,
     max_bricks: u8,
+    place_cooldown: u16,
     pub is_holding: bool,
     pub player_id: EntityId,
     pub input: InputState,
@@ -26,6 +29,7 @@ impl PlayerController {
             prev_action: false,
             curr_brick_count: 0,
             last_angle: 0.0,
+            place_cooldown: 0,
             max_bricks: 3,
             input: InputState::new(),
             player_id: player_id,
@@ -80,8 +84,15 @@ impl PlayerController {
         (x, y, vx, vy, angle)
     }
 
+    pub fn tick(&mut self, _dt: f32) {
+        if self.place_cooldown > 0 {
+            self.place_cooldown -= 1;
+        }
+    }
+
     pub fn add_brick(&mut self) {
         self.curr_brick_count += 1;
+        self.on_place();
     }
 
     pub fn remove_brick(&mut self) {
@@ -90,6 +101,15 @@ impl PlayerController {
         }
     }
 
+    pub fn reset_player(&mut self) {
+        self.curr_brick_count = 0;
+        self.place_cooldown = 0;
+        self.is_holding = false;
+        self.action_toggle = false;
+        self.prev_action = false;
+    }
+
+    //Private
     fn handle_action(&mut self, events: &mut EventQueue) {
         self.action_toggle = !self.action_toggle;
         if self.action_toggle {
@@ -124,7 +144,7 @@ impl PlayerController {
         player_pos: (f32, f32),
         angle: f32,
     ) {
-        if self.curr_brick_count >= self.max_bricks {
+        if !self.can_place() {
             return;
         }
 
@@ -142,5 +162,16 @@ impl PlayerController {
             player_id: self.player_id,
             pos: brick_pos,
         });
+    }
+
+    fn can_place(&self) -> bool {
+        if self.curr_brick_count >= self.max_bricks {
+            return false;
+        }
+
+        self.place_cooldown == 0
+    }
+    fn on_place(&mut self) {
+        self.place_cooldown = PLACE_COOLDOWN_TICKS;
     }
 }

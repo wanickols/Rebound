@@ -1,4 +1,4 @@
-use crate::game::{eventqueue::EventQueue, state::State, util::Util, world::World};
+use crate::game::{eventqueue::EventQueue, state::State, world::World};
 
 pub struct Physics;
 

@@ -170,6 +170,7 @@ impl GameManager {
                     self.spawn_manager
                         .add_brick(&mut self.world, pos, player_id);
                     if let Some(player) = &mut self.world.grab_entity(player_id) {
+                        println!("Player {:?} placed a brick", player_id);
                         player.player_controller.as_mut().unwrap().add_brick();
                     }
                 }

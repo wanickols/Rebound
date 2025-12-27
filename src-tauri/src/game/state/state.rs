@@ -68,6 +68,7 @@ pub struct State {
     pub time_to_live: Option<u16>,
     pub team_id: Option<u8>,
     pub held_by: Option<EntityId>,
+    pub owner_id: Option<EntityId>,
     pub player_controller: Option<PlayerController>,
 }
 
@@ -91,13 +92,24 @@ impl State {
                 self.time_to_live = Some(ttl - 1);
             }
         }
+
+        if let Some(pc) = &mut self.player_controller {
+            pc.tick(dt);
+        }
     }
 
     //Tick Helpers
     fn die(&mut self, events: &mut EventQueue) {
         self.is_alive = false;
         self.is_static = true;
-        println!("edddddded");
+        if let Some(owner_id) = self.owner_id {
+            events.push(GameEvent::Die {
+                owner_id: owner_id,
+                brick_id: self.entity_id,
+            });
+        } else {
+            println!("Entity {:?} died without an owner", self.entity_id);
+        }
     }
 
     fn apply_friction(&mut self, dt: f32) {
@@ -354,6 +366,7 @@ impl State {
             kind: Kind::Ball,
             time_to_live: None,
             entity_id: EntityId::new(),
+            owner_id: None,
             team_id: None,
             held_by: None,
             player_controller: None,
@@ -404,9 +417,9 @@ impl State {
         s.shape = Shape::Rectangle { w, h: w };
         s.kind = Kind::Brick;
         s.mass = 20.0;
-        s.time_to_live = Some(7);
+        s.time_to_live = Some(60 * 5); // 5 seconds
         s.is_static = false;
-        s.held_by = Some(entity_id);
+        s.owner_id = Some(entity_id);
         s
     }
 

@@ -109,7 +109,11 @@ impl SpawnManager {
                     state.held_by = None;
                     state.vx = 0.0;
                     state.vy = 0.0;
+                    state.player_controller.as_mut().unwrap().reset_player();
                     player_index += 1;
+                }
+                Kind::Brick => {
+                    state.time_to_live = Some(0);
                 }
                 _ => {}
             }
