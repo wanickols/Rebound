@@ -2,22 +2,18 @@ mod game;
 
 use crate::game::gamemanager::GameManager;
 use crate::game::gamepayload::GamePayload;
-use crate::game::input::{GameAction, InputValue};
+use crate::game::input::InputFrame;
 use crate::game::state::entityid::EntityId;
 
 use std::sync::{Arc, Mutex};
 use tauri::{Emitter, Manager};
 
 #[tauri::command]
-fn input_event(
-    id: u32,
-    action: GameAction,
-    value: InputValue,
-    gm: tauri::State<Arc<Mutex<GameManager>>>,
-) {
-    let player_id = EntityId(id);
+fn input_frame(gm: tauri::State<Arc<Mutex<GameManager>>>, id: u32, frame: InputFrame) {
+    // store in HashMap<PlayerId, InputFrame> per tick
     let mut gm = gm.lock().unwrap();
-    gm.set_input(player_id, action, value);
+    let player_id = EntityId(id);
+    gm.set_input(player_id, frame);
 }
 
 #[tauri::command]
@@ -84,7 +80,7 @@ pub fn run() {
             Ok(())
         }) // makes GameManager available to all commands
         .invoke_handler(tauri::generate_handler![
-            input_event,
+            input_frame,
             set_game_settings,
             request_player_id,
             start_game,

@@ -95,20 +95,20 @@ impl SpawnManager {
             match state.kind {
                 Kind::Ball => {
                     if let Some((bx, by)) = self.ball_start {
-                        state.x = bx;
-                        state.y = by;
+                        state.physics_state.pos.x = bx;
+                        state.physics_state.pos.y = by;
                         state.held_by = None;
-                        state.vx = 0.0;
-                        state.vy = 0.0;
+                        state.physics_state.vel.x = 0.0;
+                        state.physics_state.vel.y = 0.0;
                     }
                 }
                 Kind::Player => {
                     let (px, py) = PLAYER_POSITIONS[player_index];
-                    state.x = px;
-                    state.y = py;
+                    state.physics_state.pos.x = px;
+                    state.physics_state.pos.y = py;
                     state.held_by = None;
-                    state.vx = 0.0;
-                    state.vy = 0.0;
+                    state.physics_state.vel.x = 0.0;
+                    state.physics_state.vel.y = 0.0;
                     state.player_controller.as_mut().unwrap().reset_player();
                     player_index += 1;
                 }

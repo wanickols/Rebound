@@ -1,4 +1,9 @@
-use crate::game::{eventqueue::EventQueue, state::State, world::World};
+use crate::game::{
+    eventqueue::EventQueue,
+    input::inputframe::Vec2,
+    state::{physicsstate::PhysicsState, State},
+    world::World,
+};
 
 pub struct Physics;
 
@@ -11,21 +16,33 @@ impl Physics {
 
             let s = &mut world.entities[i];
 
-            if let Some(controller) = &mut s.player_controller {
-                let (x, y, vx, vy, angle) = controller.apply_input(s.x, s.y, s.vx, s.vy, events);
+            let ps = &mut s.physics_state;
 
-                s.x = x;
-                s.y = y;
-                s.vx = vx;
-                s.vy = vy;
+            //Apply player input
+            if let Some(controller) = &mut s.player_controller {
+                let (x, y, vx, vy, angle) = controller.apply_input(
+                    Vec2 {
+                        x: ps.pos.x,
+                        y: ps.pos.y,
+                    },
+                    Vec2 {
+                        x: ps.vel.x,
+                        y: ps.vel.y,
+                    },
+                    events,
+                );
+
+                ps.pos.x = x;
+                ps.pos.y = y;
+                ps.vel.x = vx;
+                ps.vel.y = vy;
                 if angle.is_some() {
-                    s.angle = angle.unwrap();
+                    ps.angle = angle.unwrap();
                 }
             }
 
+            let (next_x, next_y) = ps.predict_position(dt);
             s.tick(dt, events);
-
-            let (next_x, next_y) = s.predict_position(dt);
 
             for j in 0..world.entities.len() {
                 if i == j {
@@ -38,20 +55,23 @@ impl Physics {
                     }
                 }
 
-                if !world.entities[i].check_collision_predicted(&world.entities[j], next_x, next_y)
-                {
+                if !world.entities[i].physics_state.check_collision_predicted(
+                    &world.entities[j].physics_state,
+                    next_x,
+                    next_y,
+                ) {
                     continue;
                 }
 
                 State::handle_collision(&mut world.entities, i, j, events);
             }
-            world.entities[i].update_position(dt);
+            world.entities[i].physics_state.update_position(dt);
         }
     }
 
-    pub fn apply_impulse(state: &mut State, angle: f32, power: f32) {
-        state.vx += angle.cos() * power;
-        state.vy += angle.sin() * power;
+    pub fn apply_impulse(state: &mut PhysicsState, angle: f32, power: f32) {
+        state.vel.x += angle.cos() * power;
+        state.vel.y += angle.sin() * power;
     }
 
     //Yeah prob not best
@@ -71,12 +91,14 @@ impl Physics {
                 let velocity_damping = 0.6;
 
                 // compute target position in front of player
-                let target_x = holder.x + holder.angle.cos() * hold_distance;
-                let target_y = holder.y + holder.angle.sin() * hold_distance;
+                let target_x =
+                    holder.physics_state.pos.x + holder.physics_state.angle.cos() * hold_distance;
+                let target_y =
+                    holder.physics_state.pos.y + holder.physics_state.angle.sin() * hold_distance;
 
                 // calculate distance to ball
-                let dx = target_x - held.x;
-                let dy = target_y - held.y;
+                let dx = target_x - held.physics_state.pos.x;
+                let dy = target_y - held.physics_state.pos.y;
                 let distance_sq = dx * dx + dy * dy;
 
                 // if too far, drop the ball
@@ -87,20 +109,20 @@ impl Physics {
                 }
 
                 // smooth follow
-                held.x += dx * follow_strength;
-                held.y += dy * follow_strength;
+                held.physics_state.pos.x += dx * follow_strength;
+                held.physics_state.pos.y += dy * follow_strength;
 
                 // damp velocity
-                held.vx *= velocity_damping;
-                held.vy *= velocity_damping;
+                held.physics_state.vel.x *= velocity_damping;
+                held.physics_state.vel.y *= velocity_damping;
 
-                let (next_x, next_y) = held.predict_position(dt);
+                let (next_x, next_y) = held.physics_state.predict_position(dt);
 
                 // Check triggers (goal zones, sensors, etc.)
                 for j in 0..world.entities.len() {
                     if j != i && world.entities[j].entity_id != holder_id {
-                        if !world.entities[i].check_collision_predicted(
-                            &world.entities[j],
+                        if !world.entities[i].physics_state.check_collision_predicted(
+                            &world.entities[j].physics_state,
                             next_x,
                             next_y,
                         ) {
@@ -117,10 +139,16 @@ impl Physics {
         false
     }
 
-    pub fn resolve_pair(a: &mut State, b: &mut State, nx: f32, ny: f32, overlap: f32) {
+    pub fn resolve_pair(
+        a: &mut PhysicsState,
+        b: &mut PhysicsState,
+        nx: f32,
+        ny: f32,
+        overlap: f32,
+    ) {
         // --- IMPULSE RESPONSE ---
-        let rvx = b.vx - a.vx;
-        let rvy = b.vy - a.vy;
+        let rvx = b.vel.x - a.vel.x;
+        let rvy = b.vel.y - a.vel.y;
 
         let vel_along_normal = rvx * nx + rvy * ny;
         if vel_along_normal > 0.0 {
@@ -137,24 +165,24 @@ impl Physics {
         let impulse_y = j * ny;
 
         if !a.is_static {
-            a.vx -= impulse_x * inv_mass_a;
-            a.vy -= impulse_y * inv_mass_a;
+            a.vel.x -= impulse_x * inv_mass_a;
+            a.vel.y -= impulse_y * inv_mass_a;
         }
         if !b.is_static {
-            b.vx += impulse_x * inv_mass_b;
-            b.vy += impulse_y * inv_mass_b;
+            b.vel.x += impulse_x * inv_mass_b;
+            b.vel.y += impulse_y * inv_mass_b;
         }
 
         // --- POSITION CORRECTION ---
         let percent = 0.8; // tweak: how aggressively to separate
         let correction = overlap / (inv_mass_a + inv_mass_b) * percent;
         if !a.is_static {
-            a.x -= correction * nx * inv_mass_a;
-            a.y -= correction * ny * inv_mass_a;
+            a.pos.x -= correction * nx * inv_mass_a;
+            a.pos.y -= correction * ny * inv_mass_a;
         }
         if !b.is_static {
-            b.x += correction * nx * inv_mass_b;
-            b.y += correction * ny * inv_mass_b;
+            b.pos.x += correction * nx * inv_mass_b;
+            b.pos.y += correction * ny * inv_mass_b;
         }
     }
 }

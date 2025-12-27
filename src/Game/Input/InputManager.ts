@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
-import { InputValue } from "./InputTypes";
 import { GamepadData } from "./ControllerManager";
 import { listen } from "@tauri-apps/api/event";
+import { FACE, InputFrame, Vec2 } from "./InputFrame";
 
 export type PlayerId = [number];
 
@@ -90,49 +90,48 @@ export class InputManager {
     const playerId = this.bindings.get(pad.index);
     if (!playerId) return;
 
-    console.log("Gamepad event for player", playerId, pad);
-    // Axes
-    const x = pad.axes[0];
-    const y = pad.axes[1];
+    const move_axis = this.updateMove(pad.index, pad.axes[0], pad.axes[1]);
 
-    this.updateMove(playerId, pad.index, x, y);
-
-    // Action
-    var pressed = pad.buttons[0];
-    this.sendActionToServer(playerId, "action", { Bool: pressed });
-    //Place
-    pressed = pad.buttons[1];
-    this.sendActionToServer(playerId, "place", { Bool: pressed });
-
-    // Look
-    const [rx, ry] = [pad.axes[2], pad.axes[3]];
     const deadzone = 0.2;
+    const rx = pad.axes[2];
+    const ry = pad.axes[3];
 
-    const mx = Math.abs(rx) < deadzone ? 0 : rx;
-    const my = Math.abs(ry) < deadzone ? 0 : ry;
+    const look = {
+      x: Math.abs(rx) < deadzone ? 0 : rx,
+      y: Math.abs(ry) < deadzone ? 0 : ry,
+    };
 
-    this.sendActionToServer(playerId, "look", {
-      Vec2: { x: mx, y: my },
-    });
+    const frame: InputFrame = {
+      move_axis,
+      look,
+      buttons: {
+        grab: pad.buttons[FACE.BOTTOM],
+        dash: pad.buttons[FACE.LEFT],
+        place: pad.buttons[FACE.RIGHT],
+      },
+    };
+
+    this.sendInputFrame(playerId, frame);
   }
 
-  updateMove(id: PlayerId, index: number, x: number, y: number) {
-    // optional deadzone for analog sticks
+  updateMove(index: number, x: number, y: number): Vec2 {
     const deadzone = 0.2;
     const mx = Math.abs(x) < deadzone ? 0 : x;
     const my = Math.abs(y) < deadzone ? 0 : y;
 
     const last = this.lastMove[index] || { x: 0, y: 0 };
+
     if (last.x !== mx || last.y !== my) {
       this.lastMove[index] = { x: mx, y: my };
-      this.sendActionToServer(id, "move", { Vec2: { x: mx, y: my } });
     }
+
+    return this.lastMove[index];
   }
 
   //Server Side
-  public sendActionToServer(id: PlayerId, action: string, value: InputValue) {
-    invoke("input_event", { id, action, value }).catch((err) => {
-      console.warn("Failed to send input event:", err);
+  sendInputFrame(id: PlayerId, frame: InputFrame) {
+    invoke("input_frame", { id, frame }).catch((err) => {
+      console.warn("Failed to send input frame:", err);
     });
   }
 }

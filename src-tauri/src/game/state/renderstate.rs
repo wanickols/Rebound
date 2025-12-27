@@ -50,12 +50,12 @@ impl RenderState {
 impl From<&State> for RenderState {
     fn from(state: &State) -> Self {
         Self {
-            x: state.x,
-            y: state.y,
-            shape: state.shape,
-            angle: state.angle,
-            vx: state.vx,
-            vy: state.vy,
+            x: state.physics_state.pos.x,
+            y: state.physics_state.pos.y,
+            shape: state.physics_state.shape,
+            angle: state.physics_state.angle,
+            vx: state.physics_state.vel.x,
+            vy: state.physics_state.vel.y,
             is_static: state.is_static,
             is_trigger: state.is_trigger,
             kind: state.kind,

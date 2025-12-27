@@ -1,5 +1,5 @@
 use crate::game::eventqueue::{EventQueue, GameEvent};
-use crate::game::input::{GameAction, GameActionEvent, InputValue};
+use crate::game::input::{self, InputFrame};
 use crate::game::physics::Physics;
 use crate::game::scoremanager::{ScoreManager, Team};
 use crate::game::spawnmanager::SpawnManager;
@@ -21,7 +21,7 @@ pub enum GamePhase {
 
 pub struct GameManager {
     pub world: World,
-    pending_inputs: HashMap<EntityId, Vec<GameActionEvent>>,
+    pending_inputs: HashMap<EntityId, InputFrame>,
     pub app: AppHandle,
     pub phase: GamePhase,
     pub event_queue: EventQueue,
@@ -62,15 +62,8 @@ impl GameManager {
         gm
     }
 
-    pub fn set_input(&mut self, player: EntityId, action: GameAction, value: InputValue) {
-        self.pending_inputs
-            .entry(player)
-            .or_default()
-            .push(GameActionEvent {
-                action,
-                value,
-                timestamp: 0,
-            });
+    pub fn set_input(&mut self, player: EntityId, frame: InputFrame) {
+        self.pending_inputs.insert(player, frame);
     }
 
     pub fn set_game_settings(&mut self, player_count: u8, target_score: u8) {
@@ -138,8 +131,8 @@ impl GameManager {
                             if ball.held_by.is_some() {
                                 return;
                             }
-                            let dx = ball.x - player.x;
-                            let dy = ball.y - player.y;
+                            let dx = ball.physics_state.pos.x - player.physics_state.pos.x;
+                            let dy = ball.physics_state.pos.y - player.physics_state.pos.y;
 
                             if dx * dx + dy * dy < GRAB_RADIUS.powi(2) {
                                 ball.held_by = Some(player_id);
@@ -162,7 +155,11 @@ impl GameManager {
                             // Release the ball and apply impulse
                             ball.held_by = None;
                             player.set_holding(false);
-                            Physics::apply_impulse(ball, player.angle, 1000.0);
+                            Physics::apply_impulse(
+                                &mut ball.physics_state,
+                                player.physics_state.angle,
+                                1000.0,
+                            );
                         }
                     }
                 }
@@ -195,26 +192,18 @@ impl GameManager {
 
             GamePhase::Playing => {
                 //Apply physics
-                for (&player_id, events) in &self.pending_inputs {
+                for (player_id, frame) in self.pending_inputs.drain() {
                     if let Some(state) = self
                         .world
                         .entities
                         .iter_mut()
                         .find(|s| s.entity_id == player_id)
                     {
-                        for event in events {
-                            let input = state.input();
-                            match event.action {
-                                GameAction::Move => input.move_axis = event.value.as_vec2(),
-                                GameAction::Action => input.action = event.value.as_bool(),
-                                GameAction::Aim => input.mouse_pos = event.value.as_vec2(),
-                                GameAction::Look => input.look_pos = event.value.as_vec2(),
-                                GameAction::Place => input.place = event.value.as_bool(),
-                            }
+                        if let Some(controller) = &mut state.player_controller {
+                            controller.input = frame;
                         }
                     }
                 }
-                self.pending_inputs.clear();
 
                 Physics::update(&mut self.world, dt, &mut self.event_queue);
             }

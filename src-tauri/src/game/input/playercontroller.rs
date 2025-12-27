@@ -1,6 +1,7 @@
 use crate::game::eventqueue::{EventQueue, GameEvent};
+use crate::game::input::inputframe::Vec2;
+use crate::game::input::InputFrame;
 use crate::game::state::entityid::EntityId;
-use crate::game::state::InputState;
 
 const PLACE_COOLDOWN_TICKS: u16 = 10;
 
@@ -16,7 +17,7 @@ pub struct PlayerController {
     place_cooldown: u16,
     pub is_holding: bool,
     pub player_id: EntityId,
-    pub input: InputState,
+    pub input: InputFrame,
 }
 
 impl PlayerController {
@@ -31,7 +32,7 @@ impl PlayerController {
             last_angle: 0.0,
             place_cooldown: 0,
             max_bricks: 3,
-            input: InputState::new(),
+            input: InputFrame::new(),
             player_id: player_id,
         }
     }
@@ -39,16 +40,13 @@ impl PlayerController {
     // returns (new_x, new_y, new_vx, new_vy, new_angle)
     pub fn apply_input(
         &mut self,
-        x: f32,
-        y: f32,
-        vx: f32,
-        vy: f32,
+        pos: Vec2,
+        vel: Vec2,
         events: &mut EventQueue,
     ) -> (f32, f32, f32, f32, Option<f32>) {
         //handle movement
-        let ax = self.input.move_axis.0;
-        let ay = self.input.move_axis.1;
-        let mut angle = self.handle_look(self.input.look_pos);
+        let delta = self.input.move_axis;
+        let mut angle = self.handle_look(self.input.look);
 
         //If look does nothing, see if aiming is a thing
         if angle.is_some() {
@@ -58,9 +56,9 @@ impl PlayerController {
         }
 
         //handle actions
-        if self.input.action {
-            if self.input.action != self.prev_action {
-                self.prev_action = self.input.action;
+        if self.input.buttons.grab {
+            if self.input.buttons.grab != self.prev_action {
+                self.prev_action = self.input.buttons.grab;
 
                 self.handle_action(events);
             }
@@ -69,19 +67,19 @@ impl PlayerController {
         }
 
         //Handle Brick Placement
-        if self.input.place {
-            self.handle_brick_placement(events, (x, y), angle.expect("No angle bro"));
+        if self.input.buttons.place {
+            self.handle_brick_placement(events, pos, angle.expect("No angle bro"));
         }
 
         // apply acceleration to velocity
-        let mut vx = vx + ax * self.accel;
-        let mut vy = vy + ay * self.accel;
+        let mut vx = vel.x + delta.x * self.accel;
+        let mut vy = vel.y + delta.y * self.accel;
 
         // clamp velocity
         vx = vx.clamp(-self.max_speed, self.max_speed);
         vy = vy.clamp(-self.max_speed, self.max_speed);
 
-        (x, y, vx, vy, angle)
+        (pos.x, pos.y, vx, vy, angle)
     }
 
     pub fn tick(&mut self, _dt: f32) {
@@ -123,13 +121,13 @@ impl PlayerController {
         }
     }
 
-    fn handle_look(&mut self, dir: (f32, f32)) -> Option<f32> {
-        if dir.0 != 0.0 || dir.1 != 0.0 {
-            let angle = dir.1.atan2(dir.0);
+    fn handle_look(&mut self, dir: Vec2) -> Option<f32> {
+        if dir.x != 0.0 || dir.y != 0.0 {
+            let angle = dir.y.atan2(dir.x);
             // println!(
             //     "[LOOK] dir=({:.2}, {:.2}) -> angle={:.3} rad ({:.1}°)",
-            //     dir.0,
-            //     dir.1,
+            //     dir.x,
+            //     dir.y,
             //     angle,
             //     angle.to_degrees()
             // );
@@ -138,12 +136,7 @@ impl PlayerController {
         None
     }
 
-    fn handle_brick_placement(
-        &mut self,
-        events: &mut EventQueue,
-        player_pos: (f32, f32),
-        angle: f32,
-    ) {
+    fn handle_brick_placement(&mut self, events: &mut EventQueue, player_pos: Vec2, angle: f32) {
         if !self.can_place() {
             return;
         }
@@ -153,8 +146,8 @@ impl PlayerController {
         let dir_x = angle.cos();
         let dir_y = angle.sin();
 
-        let brick_x = player_pos.0 + dir_x * distance;
-        let brick_y = player_pos.1 + dir_y * distance;
+        let brick_x = player_pos.x + dir_x * distance;
+        let brick_y = player_pos.y + dir_y * distance;
 
         let brick_pos = (brick_x, brick_y);
 
