@@ -62,7 +62,7 @@ impl GameManager {
         gm
     }
 
-    pub fn set_input(&mut self, player: EntityId, frame: InputFrame) {
+    pub fn queue_input(&mut self, player: EntityId, frame: InputFrame) {
         self.pending_inputs.insert(player, frame);
     }
 

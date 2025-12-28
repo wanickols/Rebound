@@ -1,19 +1,24 @@
 mod game;
+mod network;
 
 use crate::game::gamemanager::GameManager;
 use crate::game::gamepayload::GamePayload;
-use crate::game::input::InputFrame;
+
 use crate::game::state::entityid::EntityId;
+use crate::network::clientrequest::ClientRequest;
+use crate::network::networkmanager::{NetworkManager, Role};
+use crate::network::serverevent::ServerEvent;
 
 use std::sync::{Arc, Mutex};
-use tauri::{Emitter, Manager};
+use tauri::Manager;
 
 #[tauri::command]
-fn input_frame(gm: tauri::State<Arc<Mutex<GameManager>>>, id: u32, frame: InputFrame) {
-    // store in HashMap<PlayerId, InputFrame> per tick
-    let mut gm = gm.lock().unwrap();
-    let player_id = EntityId(id);
-    gm.set_input(player_id, frame);
+fn client_request(
+    request: ClientRequest,
+    nm: tauri::State<Arc<Mutex<NetworkManager>>>,
+) -> Option<EntityId> {
+    let mut nm = nm.lock().unwrap();
+    return nm.process_request(request);
 }
 
 #[tauri::command]
@@ -29,22 +34,6 @@ fn set_game_settings(
 
     let mut gm = gm.lock().unwrap();
     gm.set_game_settings(player_count, target_score);
-}
-
-#[tauri::command]
-fn request_player_id(gm: tauri::State<Arc<Mutex<GameManager>>>) -> Option<EntityId> {
-    let mut gm = gm.lock().unwrap();
-
-    let pid = gm.try_get_new_player();
-    println!("Sending player id: {:?}", pid);
-    pid
-}
-
-#[tauri::command]
-fn remove_player(id: u32, gm: tauri::State<Arc<Mutex<GameManager>>>) {
-    let mut gm = gm.lock().unwrap();
-    let player_id = EntityId(id);
-    gm.remove_player(player_id);
 }
 
 #[tauri::command]
@@ -75,18 +64,22 @@ pub fn run() {
             let gm = Arc::new(Mutex::new(GameManager::new(app.handle(), 320.0, 180.0)));
             app.manage(gm.clone());
 
+            let nm = Arc::new(Mutex::new(NetworkManager::new(
+                Role::Host,
+                Some(gm.clone()),
+            )));
+            app.manage(nm.clone());
+
             let gm_for_loop = Arc::clone(&gm);
-            start_game_loop(gm_for_loop);
+            start_game_loop(gm_for_loop, nm);
             Ok(())
         }) // makes GameManager available to all commands
         .invoke_handler(tauri::generate_handler![
-            input_frame,
             set_game_settings,
-            request_player_id,
+            client_request,
             start_game,
             end_game,
             quit_game,
-            remove_player,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -95,7 +88,7 @@ pub fn run() {
 use std::thread;
 use std::time::{Duration, Instant};
 
-fn start_game_loop(gm: Arc<Mutex<GameManager>>) {
+fn start_game_loop(gm: Arc<Mutex<GameManager>>, nm: Arc<Mutex<NetworkManager>>) {
     thread::spawn(move || {
         let tick_rate = 60.0; // Hz
         let tick_duration = Duration::from_secs_f32(1.0 / tick_rate);
@@ -109,9 +102,14 @@ fn start_game_loop(gm: Arc<Mutex<GameManager>>) {
                 gm.update(); // apply input & physics + emit state
 
                 let payload = GamePayload::from(&*gm);
-                if let Err(err) = gm.app.emit("game-state", payload) {
-                    eprintln!("Failed to emit game-state: {}", err);
-                }
+
+                let nmm = nm.lock().unwrap();
+                nmm.send_server_event(
+                    &gm,
+                    ServerEvent::WorldSnapshot {
+                        snapshot: payload.clone(),
+                    },
+                );
             }
 
             // sleep the remainder of the tick

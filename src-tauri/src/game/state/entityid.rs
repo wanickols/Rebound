@@ -1,8 +1,8 @@
 use std::sync::atomic::{AtomicU32, Ordering};
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct EntityId(pub u32);
 
 static ENTITY_ID_COUNTER: AtomicU32 = AtomicU32::new(1);

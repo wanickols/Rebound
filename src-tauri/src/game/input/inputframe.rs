@@ -1,14 +1,14 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 // Vec2 type for movement/look
-#[derive(Debug, Clone, Copy, Deserialize)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 pub struct Vec2 {
     pub x: f32,
     pub y: f32,
 }
 
 // Button state
-#[derive(Debug, Clone, Copy, Deserialize)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 pub struct Buttons {
     pub grab: bool,
     pub place: bool,
@@ -16,7 +16,7 @@ pub struct Buttons {
 }
 
 // InputFrame sent by frontend
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InputFrame {
     pub move_axis: Vec2, // `move` is a keyword in Rust
     pub look: Vec2,

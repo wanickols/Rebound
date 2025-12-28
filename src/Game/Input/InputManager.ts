@@ -2,8 +2,12 @@ import { invoke } from "@tauri-apps/api/core";
 import { GamepadData } from "./ControllerManager";
 import { listen } from "@tauri-apps/api/event";
 import { FACE, InputFrame, Vec2 } from "./InputFrame";
+import {
+  sendClientRequest,
+  sendClientRequestWithResponse,
+} from "./ClientRequest";
 
-export type PlayerId = [number];
+export type PlayerId = number;
 
 export class InputManager {
   //Movement
@@ -57,15 +61,21 @@ export class InputManager {
       this.bindings.set(index, freePlayer);
       return;
     }
+    try {
+      const id = await sendClientRequestWithResponse<PlayerId | null>({
+        type: "Add",
+      });
 
-    // otherwise, ask backend to create one
-    const id = await invoke<PlayerId | null>("request_player_id");
-    if (id !== null) {
-      console.log("Assigned new player ID", id, "to controller", index);
-      this.players.add(id);
-      this.bindings.set(index, id);
+      if (id !== null) {
+        console.log("Assigned new player ID", id, "to controller", index);
+        this.players.add(id);
+        this.bindings.set(index, id);
+      } else {
+        console.warn("Failed to get a player ID from the host");
+      }
+    } catch (err) {
+      console.error("Error sending ClientRequest::Add:", err);
     }
-    // else: leave unbound (ignored)
   }
 
   private findUnassignedPlayer(): PlayerId | null {
@@ -111,7 +121,11 @@ export class InputManager {
       },
     };
 
-    this.sendInputFrame(playerId, frame);
+    sendClientRequest({
+      type: "Input",
+      entity_id: playerId,
+      frame: frame,
+    });
   }
 
   updateMove(index: number, x: number, y: number): Vec2 {
@@ -126,12 +140,5 @@ export class InputManager {
     }
 
     return this.lastMove[index];
-  }
-
-  //Server Side
-  sendInputFrame(id: PlayerId, frame: InputFrame) {
-    invoke("input_frame", { id, frame }).catch((err) => {
-      console.warn("Failed to send input frame:", err);
-    });
   }
 }
