@@ -12,7 +12,7 @@ pub struct Vec2 {
 pub struct Buttons {
     pub grab: bool,
     pub place: bool,
-    pub dash: bool,
+    pub dash: bool, //todo: implement dash
 }
 
 // InputFrame sent by frontend
@@ -34,10 +34,5 @@ impl InputFrame {
                 dash: false,
             },
         }
-    }
-
-    // Optional: helper to parse from frontend JSON payload
-    pub fn from_payload(payload: &str) -> Result<Self, serde_json::Error> {
-        serde_json::from_str(payload)
     }
 }

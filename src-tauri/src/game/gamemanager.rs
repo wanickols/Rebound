@@ -1,5 +1,5 @@
 use crate::game::eventqueue::{EventQueue, GameEvent};
-use crate::game::input::{self, InputFrame};
+use crate::game::input::InputFrame;
 use crate::game::physics::Physics;
 use crate::game::scoremanager::{ScoreManager, Team};
 use crate::game::spawnmanager::SpawnManager;
@@ -30,7 +30,7 @@ pub struct GameManager {
 }
 
 pub const GRAB_RADIUS: f32 = 32.0;
-pub const dt: f32 = 0.016; // ~0.016
+pub const DT: f32 = 0.016; // ~0.016
 
 impl GameManager {
     pub fn new(app: &AppHandle, width: f32, height: f32) -> Self {
@@ -120,9 +120,6 @@ impl GameManager {
                     self.spawn_manager.reset_states(&mut self.world);
                     self.score_manager.enable_score();
                 }
-                GameEvent::ResetScore => {
-                    self.score_manager.reset();
-                }
                 GameEvent::TryGrab { player_id } => {
                     if let Some(ball_id) = self.spawn_manager.get_ball_id() {
                         if let Some((ball, player)) =
@@ -183,7 +180,7 @@ impl GameManager {
         //GamePhase
         match &mut self.phase {
             GamePhase::Countdown { time_left } => {
-                *time_left -= dt;
+                *time_left -= DT;
 
                 if *time_left <= 0.0 {
                     self.phase = GamePhase::Playing;
@@ -205,7 +202,7 @@ impl GameManager {
                     }
                 }
 
-                Physics::update(&mut self.world, dt, &mut self.event_queue);
+                Physics::update(&mut self.world, DT, &mut self.event_queue);
             }
 
             GamePhase::Waiting => { /* do nothing */ }

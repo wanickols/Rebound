@@ -34,7 +34,7 @@ pub enum Shape {
 pub struct State {
     pub physics_state: PhysicsState,
     pub is_static: bool,
-    pub is_enabled: bool,
+    //pub is_enabled: bool,
     pub is_trigger: bool,
     pub is_alive: bool,
     pub kind: Kind,
@@ -237,7 +237,7 @@ impl State {
         State {
             physics_state: PhysicsState::new(),
             is_static: false,
-            is_enabled: true,
+            //is_enabled: true,
             is_trigger: false,
             is_alive: true,
             kind: Kind::Ball,

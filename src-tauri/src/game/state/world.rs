@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use crate::game::{
     state::{entityid::EntityId, State},
@@ -73,10 +73,6 @@ impl World {
         );
     }
 
-    //gets
-    pub fn read_entity(&self, id: EntityId) -> Option<&State> {
-        self.entity_map.get(&id).map(|&index| &self.entities[index])
-    }
     pub fn grab_entity(&mut self, id: EntityId) -> Option<&mut State> {
         let index = self.entity_map.get(&id).copied()?; // Option<usize>
         Some(&mut self.entities[index])

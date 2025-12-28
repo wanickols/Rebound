@@ -54,10 +54,6 @@ impl ScoreManager {
         self.can_score = true;
     }
 
-    pub fn get_score(&self, team_id: u8) -> Option<u8> {
-        self.teams.iter().find(|t| t.id == team_id).map(|t| t.score)
-    }
-
     pub fn set_target_score(&mut self, target: u8) {
         self.target_score = target;
     }

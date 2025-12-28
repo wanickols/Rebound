@@ -11,8 +11,4 @@ impl Util {
             (&mut right[0], &mut left[j])
         }
     }
-
-    pub fn one_mut<T>(slice: &mut [T], i: usize) -> &mut T {
-        &mut slice[i]
-    }
 }

@@ -113,8 +113,6 @@ impl PhysicsState {
 
                 false
             }
-
-            _ => false,
         }
     }
 
