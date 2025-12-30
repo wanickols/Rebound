@@ -57,21 +57,21 @@ fn quit_game(gm: tauri::State<Arc<Mutex<GameManager>>>) {
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
-pub fn run() {
+pub async fn run() -> std::io::Result<()> {
     tauri::Builder::default()
         .plugin(tauri_plugin_store::Builder::default().build())
         .setup(|app| {
             let gm = Arc::new(Mutex::new(GameManager::new(app.handle(), 320.0, 180.0)));
             app.manage(gm.clone());
 
-            let nm = Arc::new(Mutex::new(NetworkManager::new(
-                Role::Host,
-                Some(gm.clone()),
-            )));
+            let nm = Arc::new(Mutex::new(None::<NetworkManager>));
             app.manage(nm.clone());
 
             let gm_for_loop = Arc::clone(&gm);
-            start_game_loop(gm_for_loop, nm);
+
+            spawn_network_manager(Role::Host { port: 8080 }, gm.clone(), nm.clone());
+            start_game_loop(gm_for_loop, nm.clone());
+
             Ok(())
         }) // makes GameManager available to all commands
         .invoke_handler(tauri::generate_handler![
@@ -83,12 +83,14 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+
+    Ok(())
 }
 
 use std::thread;
 use std::time::{Duration, Instant};
 
-fn start_game_loop(gm: Arc<Mutex<GameManager>>, nm: Arc<Mutex<NetworkManager>>) {
+fn start_game_loop(gm: Arc<Mutex<GameManager>>, nm: Arc<Mutex<Option<NetworkManager>>>) {
     thread::spawn(move || {
         let tick_rate = 60.0; // Hz
         let tick_duration = Duration::from_secs_f32(1.0 / tick_rate);
@@ -104,18 +106,38 @@ fn start_game_loop(gm: Arc<Mutex<GameManager>>, nm: Arc<Mutex<NetworkManager>>) 
                 let payload = GamePayload::from(&*gm);
 
                 let nmm = nm.lock().unwrap();
-                nmm.send_server_event(
-                    &gm,
-                    ServerEvent::WorldSnapshot {
-                        snapshot: payload.clone(),
-                    },
-                );
+                if let Some(nm) = nmm.as_ref() {
+                    nm.send_server_event(
+                        &gm,
+                        ServerEvent::WorldSnapshot {
+                            snapshot: payload.clone(),
+                        },
+                    );
+                }
             }
 
             // sleep the remainder of the tick
             let elapsed = start.elapsed();
             if elapsed < tick_duration {
                 thread::sleep(tick_duration - elapsed);
+            }
+        }
+    });
+}
+
+fn spawn_network_manager(
+    role: Role,
+    gm: Arc<Mutex<GameManager>>,
+    nm_slot: Arc<Mutex<Option<NetworkManager>>>,
+) {
+    tauri::async_runtime::spawn(async move {
+        match NetworkManager::new(role, Some(gm)).await {
+            Ok(nm) => {
+                *nm_slot.lock().unwrap() = Some(nm);
+                println!("NetworkManager ready");
+            }
+            Err(e) => {
+                eprintln!("Failed to start NetworkManager: {}", e);
             }
         }
     });

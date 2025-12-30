@@ -10,8 +10,8 @@ use crate::network::{
 
 #[derive(Clone, Copy)]
 pub enum Role {
-    Host,
-    Client,
+    Host { port: u16 },
+    Client { host_addr: std::net::SocketAddr },
 }
 
 pub struct NetworkManager {
@@ -21,16 +21,16 @@ pub struct NetworkManager {
 }
 
 impl NetworkManager {
-    pub fn new(role: Role, gm: Option<Arc<Mutex<GameManager>>>) -> Self {
-        Self {
-            socket: SocketManager::new(role),
+    pub async fn new(role: Role, gm: Option<Arc<Mutex<GameManager>>>) -> std::io::Result<Self> {
+        Ok(Self {
+            socket: SocketManager::new(role).await,
             role, //copy
             gm,
-        }
+        })
     }
     pub fn process_request(&mut self, request: ClientRequest) -> Option<EntityId> {
         match self.role {
-            Role::Host => {
+            Role::Host { port } => {
                 // Apply directly to GM
                 if let Some(gm) = &self.gm {
                     let mut gm = gm.lock().unwrap();
@@ -49,7 +49,7 @@ impl NetworkManager {
                     }
                 }
             }
-            Role::Client => {
+            Role::Client { host_addr } => {
                 // Serialize and send to host
                 self.socket.send_to_host(request);
             }
