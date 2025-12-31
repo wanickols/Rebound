@@ -6,10 +6,12 @@ use crate::game::spawnmanager::SpawnManager;
 
 use crate::game::state::entityid::EntityId;
 use crate::game::world::World;
+use crate::network::serverevent::ServerEvent;
 use std::collections::HashMap;
 
 use tauri::window::Color;
 use tauri::{AppHandle, Emitter};
+use tokio::sync::mpsc;
 
 #[derive(serde::Serialize, Clone, Debug)]
 pub enum GamePhase {
@@ -22,7 +24,7 @@ pub enum GamePhase {
 pub struct GameManager {
     pub world: World,
     pending_inputs: HashMap<EntityId, InputFrame>,
-    pub app: AppHandle,
+    pub snapshot_sender: Option<mpsc::UnboundedSender<ServerEvent>>,
     pub phase: GamePhase,
     pub event_queue: EventQueue,
     pub score_manager: ScoreManager,
@@ -33,7 +35,11 @@ pub const GRAB_RADIUS: f32 = 32.0;
 pub const DT: f32 = 0.016; // ~0.016
 
 impl GameManager {
-    pub fn new(app: &AppHandle, width: f32, height: f32) -> Self {
+    pub fn new(
+        width: f32,
+        height: f32,
+        snapshot_sender: Option<mpsc::UnboundedSender<ServerEvent>>,
+    ) -> Self {
         let score_manager = ScoreManager::new(
             Team {
                 id: 0,
@@ -50,9 +56,9 @@ impl GameManager {
         );
 
         let gm = Self {
-            app: app.clone(),
             world: World::new(),
             pending_inputs: HashMap::new(),
+            snapshot_sender,
             phase: GamePhase::Waiting,
             event_queue: EventQueue::new(),
             score_manager: score_manager,
@@ -92,22 +98,22 @@ impl GameManager {
         let id = self.spawn_manager.try_add_player(&mut self.world);
         if id.is_some() {
             println!("Added new player with id {:?}", id);
-            self.update_player_list();
+            //self.update_player_list();
         }
         return id;
     }
 
     pub fn remove_player(&mut self, id: EntityId) {
         self.spawn_manager.remove_player(&mut self.world, id);
-        self.update_player_list();
+        //self.update_player_list();
     }
 
-    fn update_player_list(&self) {
-        let payload = self.world.player_list.clone();
-        if let Err(err) = self.app.emit("player-list", payload) {
-            eprintln!("Failed to emit player-list: {}", err);
-        }
-    }
+    // fn update_player_list(&self) {
+    //     let payload = self.world.player_list.clone();
+    //     if let Err(err) = self.app.emit("player-list", payload) {
+    //         eprintln!("Failed to emit player-list: {}", err);
+    //     }
+    // }
 
     pub fn update(&mut self) {
         //Check Events

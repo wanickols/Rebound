@@ -1,6 +1,7 @@
 use std::sync::{Arc, Mutex, MutexGuard};
 
-use tauri::Emitter;
+use tauri::{AppHandle, Emitter};
+use tokio::sync::mpsc;
 
 use crate::game::gamemanager::GameManager;
 use crate::game::state::entityid::EntityId;
@@ -17,18 +18,32 @@ pub enum Role {
 pub struct NetworkManager {
     role: Role,
     gm: Option<Arc<Mutex<GameManager>>>,
+    pub snapshot_receiver: mpsc::UnboundedReceiver<ServerEvent>,
+    pub client_request_receiver: mpsc::UnboundedReceiver<ClientRequest>,
     socket: SocketManager,
+    app: tauri::AppHandle,
 }
 
 impl NetworkManager {
-    pub async fn new(role: Role, gm: Option<Arc<Mutex<GameManager>>>) -> std::io::Result<Self> {
+    pub async fn new(
+        role: Role,
+        gm: Option<Arc<Mutex<GameManager>>>,
+        snapshot_receiver: mpsc::UnboundedReceiver<ServerEvent>,
+        client_request_receiver: mpsc::UnboundedReceiver<ClientRequest>,
+        app: AppHandle,
+    ) -> std::io::Result<Self> {
         Ok(Self {
             socket: SocketManager::new(role).await,
             role, //copy
             gm,
+            snapshot_receiver,
+            client_request_receiver,
+            app: app,
         })
     }
     pub fn process_request(&mut self, request: ClientRequest) -> Option<EntityId> {
+        println!("Processing request:");
+
         match self.role {
             Role::Host { port } => {
                 // Apply directly to GM
@@ -57,10 +72,18 @@ impl NetworkManager {
         None
     }
 
-    pub fn send_server_event(&self, gm: &MutexGuard<'_, GameManager>, event: ServerEvent) {
+    pub async fn poll(&mut self) {
+        let mut buf = [0u8; 1024];
+        if let Ok(Some((len, addr))) = self.socket.try_recv_from(&mut buf) {
+            println!("Received {} bytes from {}", len, addr);
+            // process packet
+        }
+    }
+
+    pub fn send_server_event(&self, event: ServerEvent) {
         match event {
             ServerEvent::WorldSnapshot { snapshot } => {
-                if let Err(err) = gm.app.emit("game-state", snapshot.clone()) {
+                if let Err(err) = self.app.emit("game-state", snapshot.clone()) {
                     eprintln!("Failed to emit game-state: {}", err);
                 }
                 self.socket

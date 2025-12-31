@@ -52,14 +52,20 @@ impl SocketManager {
         })
     }
 
-    pub async fn poll(&mut self, buf: &mut [u8]) -> Result<Option<(usize, SocketAddr)>> {
-        let (len, addr) = self.socket.recv_from(buf).await?;
-
-        if self.peers.insert(addr) {
-            println!("New peer joined: {}", addr);
+    pub fn try_recv_from(&mut self, buf: &mut [u8]) -> Result<Option<(usize, SocketAddr)>> {
+        match self.socket.try_recv_from(buf) {
+            Ok((len, addr)) => {
+                if self.peers.insert(addr) {
+                    println!("New peer joined: {}", addr);
+                }
+                Ok(Some((len, addr)))
+            }
+            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                // no packet available, not an error
+                Ok(None)
+            }
+            Err(e) => Err(e.into()),
         }
-
-        Ok(Some((len, addr)))
     }
 
     pub fn network_info(&self) -> NetworkInfo {
