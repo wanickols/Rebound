@@ -86,7 +86,15 @@ impl SocketManager {
     pub fn broadcast(&self, event: ServerEvent) {
         match event {
             ServerEvent::WorldSnapshot { snapshot } => {
-                // Broadcast world snapshot to clients
+                // Serialize the snapshot
+                if let Ok(serialized) = serde_json::to_string(&snapshot) {
+                    // Iterate over connected clients and send
+                    for client in self.clients.lock().unwrap().iter() {
+                        let _ = client.send(serialized.clone());
+                    }
+                } else {
+                    eprintln!("Failed to serialize snapshot");
+                }
             }
         }
     }
