@@ -2,7 +2,7 @@ use serde::Serialize;
 
 use crate::game::state::{entityid::EntityId, Kind, Shape, State};
 
-#[derive(Serialize, Clone, Debug)]
+#[derive(Serialize, serde::Deserialize, Clone, Debug)]
 pub struct RenderState {
     pub x: f32,
     pub y: f32,

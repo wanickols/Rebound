@@ -83,21 +83,35 @@ impl SocketManager {
 
     //todo Join and Host using tok
 
-    pub fn broadcast(&self, event: ServerEvent) {
-        match event {
-            ServerEvent::WorldSnapshot { snapshot } => {
-                // Serialize the snapshot
-                if let Ok(serialized) = serde_json::to_string(&snapshot) {
-                    // Iterate over connected clients and send
-                    for client in self.clients.lock().unwrap().iter() {
-                        let _ = client.send(serialized.clone());
-                    }
-                } else {
-                    eprintln!("Failed to serialize snapshot");
-                }
+    pub async fn broadcast(&self, event: &ServerEvent) {
+        let bytes = match serde_json::to_vec(event) {
+            Ok(b) => b,
+            Err(e) => {
+                eprintln!("Failed to serialize ServerEvent: {e}");
+                return;
+            }
+        };
+
+        for addr in self.peers.iter() {
+            if let Err(e) = self.socket.send_to(&bytes, addr).await {
+                eprintln!("Failed to send to {addr}: {e}");
             }
         }
     }
 
-    pub fn send_to_host(&self, request: ClientRequest) {}
+    pub async fn send_to_host(&self, request: ClientRequest) {
+        if let Some(host_addr) = self.host_addr {
+            let bytes = match serde_json::to_vec(&request) {
+                Ok(b) => b,
+                Err(e) => {
+                    eprintln!("Failed to serialize ClientRequest: {e}");
+                    return;
+                }
+            };
+
+            if let Err(e) = self.socket.send_to(&bytes, host_addr).await {
+                eprintln!("Failed to send to host {host_addr}: {e}");
+            }
+        }
+    }
 }

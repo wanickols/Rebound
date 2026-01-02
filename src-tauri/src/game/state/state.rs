@@ -14,7 +14,7 @@ use crate::game::state::entityid::EntityId;
 use crate::game::state::physicsstate::PhysicsState;
 use crate::game::util::Util;
 
-#[derive(Serialize, Copy, Clone, Debug)]
+#[derive(Serialize, Deserialize, Copy, Clone, Debug)]
 pub enum Kind {
     Player,
     Brick,

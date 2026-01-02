@@ -4,7 +4,10 @@ This project is in active development, and I'm not organized enough to have a bu
 
 ## Todo:
 
-Get bricks working
+Networking
 
-- Have bricks spawn 3 per player
-- Have bricks kill themselves
+- Add error handling
+- Fix input
+- fix quit not working
+- get broadcast to connect and understand
+- async processing for network manager

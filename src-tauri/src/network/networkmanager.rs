@@ -41,7 +41,7 @@ impl NetworkManager {
             app: app,
         })
     }
-    pub fn process_request(&mut self, request: ClientRequest) -> Option<EntityId> {
+    pub fn process_request(&self, request: ClientRequest) -> Option<EntityId> {
         println!("Processing request:");
 
         match self.role {
@@ -72,11 +72,28 @@ impl NetworkManager {
         None
     }
 
-    pub async fn poll(&mut self) {
+    pub fn poll(&mut self) {
         let mut buf = [0u8; 1024];
         if let Ok(Some((len, addr))) = self.socket.try_recv_from(&mut buf) {
             println!("Received {} bytes from {}", len, addr);
-            // process packet
+            self.process_packet(&buf[..len], addr);
+        }
+    }
+
+    fn process_packet(&self, data: &[u8], addr: std::net::SocketAddr) {
+        match self.role {
+            Role::Host { port } => {
+                // Deserialize and process client request
+                if let Ok(request) = serde_json::from_slice::<ClientRequest>(data) {
+                    self.process_request(request);
+                }
+            }
+            Role::Client { host_addr } => {
+                // Deserialize and process server event
+                if let Ok(event) = serde_json::from_slice::<ServerEvent>(data) {
+                    self.send_server_event(event);
+                }
+            }
         }
     }
 
@@ -86,8 +103,9 @@ impl NetworkManager {
                 if let Err(err) = self.app.emit("game-state", snapshot.clone()) {
                     eprintln!("Failed to emit game-state: {}", err);
                 }
+
                 self.socket
-                    .broadcast(ServerEvent::WorldSnapshot { snapshot });
+                    .broadcast(&ServerEvent::WorldSnapshot { snapshot });
             }
         }
     }

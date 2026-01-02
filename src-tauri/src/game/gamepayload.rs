@@ -4,7 +4,7 @@ use crate::game::{
     state::{renderstate::RenderState, State},
 };
 
-#[derive(serde::Serialize, Clone, Debug)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 pub struct GamePayload {
     render_states: Vec<RenderState>,
     score_manager: ScoreManager,

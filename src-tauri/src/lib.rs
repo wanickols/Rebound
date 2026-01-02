@@ -176,7 +176,7 @@ fn start_network_loop(nm_slot: Arc<tokio::sync::Mutex<Option<NetworkManager>>>) 
             {
                 let mut nm_lock = nm_slot.lock().await;
                 if let Some(nm) = nm_lock.as_mut() {
-                    nm.poll().await;
+                    nm.poll();
 
                     while let Ok(event) = nm.snapshot_receiver.try_recv() {
                         nm.send_server_event(event);

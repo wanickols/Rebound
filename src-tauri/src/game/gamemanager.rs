@@ -13,7 +13,7 @@ use tauri::window::Color;
 use tauri::{AppHandle, Emitter};
 use tokio::sync::mpsc;
 
-#[derive(serde::Serialize, Clone, Debug)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 pub enum GamePhase {
     Waiting,
     Countdown { time_left: f32 },
