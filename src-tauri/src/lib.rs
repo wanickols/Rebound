@@ -63,7 +63,7 @@ fn quit_game(gm: tauri::State<Arc<Mutex<GameManager>>>) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub async fn run() -> std::io::Result<()> {
     tauri::Builder::default()
-        .plugin(tauri_plugin_store::Builder::default().build())
+        .plugin(tauri_plugin_process::init())
         .setup(|app| {
             let (snapshot_sender, snapshot_receiver) = mpsc::unbounded_channel::<ServerEvent>();
             let (client_request_sender, client_request_receiver) =

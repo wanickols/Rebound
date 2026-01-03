@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import { useRouter } from "vue-router";
 const router = useRouter();
+import { exit } from "@tauri-apps/plugin-process";
 
 function onPlay() {
   router.push("/gameSetup");
 }
 
-function onQuit() {
+async function onQuit() {
   console.log("Quit pressed");
-  // TODO: exit app (Tauri command or window close)
+  await exit(1);
 }
 </script>
 
