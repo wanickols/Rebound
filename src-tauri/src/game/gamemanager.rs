@@ -10,7 +10,6 @@ use crate::network::serverevent::ServerEvent;
 use std::collections::HashMap;
 
 use tauri::window::Color;
-use tauri::{AppHandle, Emitter};
 use tokio::sync::mpsc;
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]

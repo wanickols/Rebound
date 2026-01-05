@@ -20,7 +20,7 @@ pub struct NetworkManager {
     gm: Option<Arc<Mutex<GameManager>>>,
     pub snapshot_receiver: mpsc::UnboundedReceiver<ServerEvent>,
     pub client_request_receiver: mpsc::UnboundedReceiver<ClientRequest>,
-    socket: SocketManager,
+    socket: Option<SocketManager>,
     app: tauri::AppHandle,
 }
 
@@ -33,13 +33,20 @@ impl NetworkManager {
         app: AppHandle,
     ) -> std::io::Result<Self> {
         Ok(Self {
-            socket: SocketManager::new(role).await,
+            socket: None,
             role, //copy
             gm,
             snapshot_receiver,
             client_request_receiver,
             app: app,
         })
+    }
+
+    pub async fn init_socket(&mut self, role: Role) -> std::io::Result<()> {
+        self.role = role;
+        let socket = SocketManager::new(role).await;
+        self.socket = Some(socket);
+        Ok(())
     }
     pub fn process_request(&self, request: ClientRequest) -> Option<EntityId> {
         println!("Processing request:");
@@ -65,8 +72,9 @@ impl NetworkManager {
                 }
             }
             Role::Client { host_addr } => {
-                // Serialize and send to host
-                self.socket.send_to_host(request);
+                if let Some(socket) = &self.socket {
+                    socket.send_to_host(request);
+                }
             }
         }
         None
@@ -74,9 +82,11 @@ impl NetworkManager {
 
     pub fn poll(&mut self) {
         let mut buf = [0u8; 1024];
-        if let Ok(Some((len, addr))) = self.socket.try_recv_from(&mut buf) {
-            println!("Received {} bytes from {}", len, addr);
-            self.process_packet(&buf[..len], addr);
+        if let Some(socket) = &mut self.socket {
+            if let Ok(Some((len, addr))) = socket.try_recv_from(&mut buf) {
+                println!("Received {} bytes from {}", len, addr);
+                self.process_packet(&buf[..len], addr);
+            }
         }
     }
 
@@ -98,6 +108,10 @@ impl NetworkManager {
     }
 
     pub fn send_server_event(&self, event: ServerEvent) {
+        if self.socket.is_none() {
+            return;
+        }
+
         match event {
             ServerEvent::WorldSnapshot { snapshot } => {
                 if let Err(err) = self.app.emit("game-state", snapshot.clone()) {
@@ -105,6 +119,8 @@ impl NetworkManager {
                 }
 
                 self.socket
+                    .as_ref()
+                    .unwrap()
                     .broadcast(&ServerEvent::WorldSnapshot { snapshot });
             }
         }

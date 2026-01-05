@@ -8,6 +8,5 @@ Networking
 
 - Add error handling
 - Fix input
-- fix quit not working
 - get broadcast to connect and understand
 - async processing for network manager

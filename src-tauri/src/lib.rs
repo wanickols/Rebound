@@ -4,7 +4,6 @@ mod network;
 use crate::game::gamemanager::GameManager;
 use crate::game::gamepayload::GamePayload;
 
-use crate::game::state::entityid::EntityId;
 use crate::network::clientrequest::ClientRequest;
 use crate::network::networkclient::NetworkClient;
 use crate::network::networkmanager::{NetworkManager, Role};
@@ -12,12 +11,12 @@ use crate::network::serverevent::ServerEvent;
 
 use std::sync::{Arc, Mutex};
 use tauri::Manager;
-use tokio::sync::mpsc::{self, UnboundedReceiver};
+use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 
 #[tauri::command]
 fn client_request(
     request: ClientRequest,
-    client_sender: tauri::State<Arc<mpsc::UnboundedSender<ClientRequest>>>,
+    client_sender: tauri::State<Arc<UnboundedSender<ClientRequest>>>,
 ) {
     client_sender
         .send(request)
@@ -38,6 +37,23 @@ fn set_game_settings(
 
     let mut gm = gm.lock().unwrap();
     gm.set_game_settings(player_count, target_score);
+
+
+
+
+}
+
+#[tauri::command]
+async fn host_game(
+    port: u16,
+    nm: tauri::State<Arc<tokio::sync::Mutex<Option<NetworkManager>>>>,
+) {
+    let mut nm_lock = nm.lock().await;
+    if let Some(nm) = nm_lock.as_mut() {
+        nm.init_socket(Role::Host { port })
+            .await
+            .expect("Failed to init host socket");
+    }
 }
 
 #[tauri::command]
@@ -65,9 +81,9 @@ pub async fn run() -> std::io::Result<()> {
     tauri::Builder::default()
         .plugin(tauri_plugin_process::init())
         .setup(|app| {
-            let (snapshot_sender, snapshot_receiver) = mpsc::unbounded_channel::<ServerEvent>();
+            let (snapshot_sender, snapshot_receiver) = unbounded_channel::<ServerEvent>();
             let (client_request_sender, client_request_receiver) =
-                mpsc::unbounded_channel::<ClientRequest>();
+                unbounded_channel::<ClientRequest>();
 
             let gm = Arc::new(Mutex::new(GameManager::new(
                 320.0,
@@ -144,8 +160,8 @@ fn spawn_network_manager(
     role: Role,
     gm: Arc<Mutex<GameManager>>,
     nm_slot: Arc<tokio::sync::Mutex<Option<NetworkManager>>>,
-    snapshot_receiver: mpsc::UnboundedReceiver<ServerEvent>,
-    client_request_receiver: mpsc::UnboundedReceiver<ClientRequest>,
+    snapshot_receiver: UnboundedReceiver<ServerEvent>,
+    client_request_receiver: UnboundedReceiver<ClientRequest>,
     app: tauri::AppHandle,
 ) {
     tauri::async_runtime::spawn(async move {
@@ -192,7 +208,7 @@ fn start_network_loop(nm_slot: Arc<tokio::sync::Mutex<Option<NetworkManager>>>) 
     });
 }
 
-fn spawn_client(client_request_sender: mpsc::UnboundedSender<ClientRequest>) {
+fn spawn_client(client_request_sender: UnboundedSender<ClientRequest>) {
     let _network_client = NetworkClient {
         client_request_sender: Arc::new(client_request_sender),
     };

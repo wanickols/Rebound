@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
-use tokio::sync::mpsc;
+use tokio::sync::mpsc::UnboundedSender;
 
 use crate::network::clientrequest::ClientRequest;
 
 pub struct NetworkClient {
-    pub client_request_sender: Arc<mpsc::UnboundedSender<ClientRequest>>,
+    pub client_request_sender: Arc<UnboundedSender<ClientRequest>>,
 }
 
 impl NetworkClient {
