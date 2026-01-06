@@ -37,24 +37,20 @@ fn set_game_settings(
 
     let mut gm = gm.lock().unwrap();
     gm.set_game_settings(player_count, target_score);
-
-
-
-
 }
 
-#[tauri::command]
-async fn host_game(
-    port: u16,
-    nm: tauri::State<Arc<tokio::sync::Mutex<Option<NetworkManager>>>>,
-) {
-    let mut nm_lock = nm.lock().await;
-    if let Some(nm) = nm_lock.as_mut() {
-        nm.init_socket(Role::Host { port })
-            .await
-            .expect("Failed to init host socket");
-    }
-}
+// #[tauri::command]
+// async fn host_game(
+//     port: u16,
+//     nm: tauri::State<Arc<tokio::sync::Mutex<Option<NetworkManager>>>>,
+// ) {
+//     let mut nm_lock = nm.lock().await;
+//     if let Some(nm) = nm_lock.as_mut() {
+//         nm.init_socket(Role::Host { port })
+//             .await
+//             .expect("Failed to init host socket");
+//     }
+// }
 
 #[tauri::command]
 fn start_game(gm: tauri::State<Arc<Mutex<GameManager>>>) {
