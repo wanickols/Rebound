@@ -6,11 +6,12 @@ use crate::game::spawnmanager::SpawnManager;
 
 use crate::game::state::entityid::EntityId;
 use crate::game::world::World;
+use crate::network::clientrequest::ClientRequest;
 use crate::network::serverevent::ServerEvent;
 use std::collections::HashMap;
 
 use tauri::window::Color;
-use tokio::sync::mpsc;
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 pub enum GamePhase {
@@ -23,7 +24,8 @@ pub enum GamePhase {
 pub struct GameManager {
     pub world: World,
     pending_inputs: HashMap<EntityId, InputFrame>,
-    pub snapshot_sender: Option<mpsc::UnboundedSender<ServerEvent>>,
+    pub snapshot_tx: Option<UnboundedSender<ServerEvent>>,
+    pub client_request_rx: Option<UnboundedReceiver<ClientRequest>>,
     pub phase: GamePhase,
     pub event_queue: EventQueue,
     pub score_manager: ScoreManager,
@@ -34,11 +36,7 @@ pub const GRAB_RADIUS: f32 = 32.0;
 pub const DT: f32 = 0.016; // ~0.016
 
 impl GameManager {
-    pub fn new(
-        width: f32,
-        height: f32,
-        snapshot_sender: Option<mpsc::UnboundedSender<ServerEvent>>,
-    ) -> Self {
+    pub fn new(width: f32, height: f32) -> Self {
         let score_manager = ScoreManager::new(
             Team {
                 id: 0,
@@ -57,7 +55,8 @@ impl GameManager {
         let gm = Self {
             world: World::new(),
             pending_inputs: HashMap::new(),
-            snapshot_sender,
+            snapshot_tx: None,
+            client_request_rx: None,
             phase: GamePhase::Waiting,
             event_queue: EventQueue::new(),
             score_manager: score_manager,
@@ -65,6 +64,15 @@ impl GameManager {
         };
 
         gm
+    }
+
+    pub fn init_channels(
+        &mut self,
+        snapshot_tx: Option<UnboundedSender<ServerEvent>>,
+        client_request_rx: Option<UnboundedReceiver<ClientRequest>>,
+    ) {
+        self.snapshot_tx = snapshot_tx;
+        self.client_request_rx = client_request_rx;
     }
 
     pub fn queue_input(&mut self, player: EntityId, frame: InputFrame) {

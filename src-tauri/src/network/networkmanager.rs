@@ -42,12 +42,7 @@ impl NetworkManager {
         })
     }
 
-    pub async fn init_socket(&mut self, role: Role) -> std::io::Result<()> {
-        self.role = role;
-        let socket = SocketManager::new(role).await;
-        self.socket = Some(socket);
-        Ok(())
-    }
+
     pub fn process_request(&self, request: ClientRequest) -> Option<EntityId> {
         println!("Processing request:");
 
@@ -80,15 +75,15 @@ impl NetworkManager {
         None
     }
 
-    pub fn poll(&mut self) {
-        let mut buf = [0u8; 1024];
-        if let Some(socket) = &mut self.socket {
-            if let Ok(Some((len, addr))) = socket.try_recv_from(&mut buf) {
-                println!("Received {} bytes from {}", len, addr);
-                self.process_packet(&buf[..len], addr);
-            }
-        }
-    }
+    // pub fn poll(&mut self) {
+    //     let mut buf = [0u8; 1024];
+    //     if let Some(socket) = &mut self.socket {
+    //         if let Ok(Some((len, addr))) = socket.try_recv_from(&mut buf) {
+    //             println!("Received {} bytes from {}", len, addr);
+    //             self.process_packet(&buf[..len], addr);
+    //         }
+    //     }
+    // }
 
     fn process_packet(&self, data: &[u8], addr: std::net::SocketAddr) {
         match self.role {

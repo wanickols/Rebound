@@ -1,5 +1,6 @@
 mod game;
 mod network;
+mod startup;
 
 use crate::game::gamemanager::GameManager;
 use crate::game::gamepayload::GamePayload;
@@ -77,31 +78,11 @@ pub async fn run() -> std::io::Result<()> {
     tauri::Builder::default()
         .plugin(tauri_plugin_process::init())
         .setup(|app| {
-            let (snapshot_sender, snapshot_receiver) = unbounded_channel::<ServerEvent>();
-            let (client_request_sender, client_request_receiver) =
-                unbounded_channel::<ClientRequest>();
-
-            let gm = Arc::new(Mutex::new(GameManager::new(
-                320.0,
-                180.0,
-                Some(snapshot_sender),
-            )));
+            let gm = Arc::new(Mutex::new(GameManager::new(320.0, 180.0)));
             app.manage(gm.clone());
-
-            let nm = Arc::new(tokio::sync::Mutex::new(None::<NetworkManager>));
-            app.manage(nm.clone());
 
             let gm_for_loop = Arc::clone(&gm);
 
-            spawn_client(client_request_sender);
-            spawn_network_manager(
-                Role::Host { port: 8080 },
-                gm.clone(),
-                nm.clone(),
-                snapshot_receiver,
-                client_request_receiver,
-                app.handle().clone(),
-            );
             start_game_loop(gm_for_loop);
 
             Ok(())
@@ -136,7 +117,7 @@ fn start_game_loop(gm: Arc<Mutex<GameManager>>) {
                 gm.update(); // apply input & physics + emit state
 
                 let payload = GamePayload::from(&*gm);
-                if let Some(sender) = gm.snapshot_sender.as_ref() {
+                if let Some(sender) = gm.snapshot_tx.as_ref() {
                     let _ = sender.send(ServerEvent::WorldSnapshot {
                         snapshot: payload.clone(),
                     });
@@ -173,7 +154,6 @@ fn spawn_network_manager(
             Ok(nm) => {
                 *nm_slot.lock().await = Some(nm);
                 println!("NetworkManager ready");
-                start_network_loop(nm_slot);
             }
             Err(e) => {
                 eprintln!("Failed to start NetworkManager: {}", e);
@@ -182,32 +162,3 @@ fn spawn_network_manager(
     });
 }
 
-fn start_network_loop(nm_slot: Arc<tokio::sync::Mutex<Option<NetworkManager>>>) {
-    tauri::async_runtime::spawn(async move {
-        loop {
-            {
-                let mut nm_lock = nm_slot.lock().await;
-                if let Some(nm) = nm_lock.as_mut() {
-                    nm.poll();
-
-                    while let Ok(event) = nm.snapshot_receiver.try_recv() {
-                        nm.send_server_event(event);
-                    }
-
-                    while let Ok(request) = nm.client_request_receiver.try_recv() {
-                        nm.process_request(request);
-                    }
-                }
-            }
-            tokio::time::sleep(Duration::from_millis(1)).await;
-        }
-    });
-}
-
-fn spawn_client(client_request_sender: UnboundedSender<ClientRequest>) {
-    let _network_client = NetworkClient {
-        client_request_sender: Arc::new(client_request_sender),
-    };
-
-    // You can now use `_network_client` to send requests
-}
