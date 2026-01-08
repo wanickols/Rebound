@@ -32,10 +32,7 @@ impl NetworkHandler {
     }
 
     async fn handle_client_request(&self, request: ClientRequest) {
-        // add
-        // remove
-        // input
-
+        // some point check for missing entity id's or obvious fails here.
         let _ = self.game_tx.send(request);
     }
 

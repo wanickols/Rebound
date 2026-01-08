@@ -7,22 +7,23 @@ use crate::game::gamepayload::GamePayload;
 
 use crate::network::clientrequest::ClientRequest;
 use crate::network::networkclient::NetworkClient;
-use crate::network::networkmanager::{NetworkManager, Role};
 use crate::network::serverevent::ServerEvent;
+use crate::startup::startup::StartupManager;
 
 use std::sync::{Arc, Mutex};
 use tauri::Manager;
-use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 
 #[tauri::command]
-fn client_request(
-    request: ClientRequest,
-    client_sender: tauri::State<Arc<UnboundedSender<ClientRequest>>>,
-) {
-    client_sender
-        .send(request)
-        .expect("Failed to send client request");
-    // returns immediately, no async/await needed
+fn client_request(request: ClientRequest, client: tauri::State<Arc<Mutex<NetworkClient>>>) {
+    let client_lock = match client.lock() {
+        Ok(lock) => lock,
+        Err(poisoned) => {
+            eprintln!("Warning: NetworkClient mutex was poisoned. Recovering...");
+            poisoned.into_inner()
+        }
+    };
+
+    client_lock.send_request(request);
 }
 
 #[tauri::command]
@@ -40,18 +41,24 @@ fn set_game_settings(
     gm.set_game_settings(player_count, target_score);
 }
 
-// #[tauri::command]
-// async fn host_game(
-//     port: u16,
-//     nm: tauri::State<Arc<tokio::sync::Mutex<Option<NetworkManager>>>>,
-// ) {
-//     let mut nm_lock = nm.lock().await;
-//     if let Some(nm) = nm_lock.as_mut() {
-//         nm.init_socket(Role::Host { port })
-//             .await
-//             .expect("Failed to init host socket");
-//     }
-// }
+#[tauri::command]
+fn host_game(port: u16, startup: tauri::State<Arc<Mutex<StartupManager>>>) {
+    // Attempt to lock the StartupManager
+    let mut start_lock = match startup.lock() {
+        Ok(lock) => lock,
+        Err(poisoned) => {
+            // Recover from a poisoned mutex by taking the inner value
+            eprintln!("Warning: StartupManager mutex was poisoned. Recovering...");
+            poisoned.into_inner()
+        }
+    };
+
+    // Use default port 8080 if 0 is passed
+    let port = if port == 0 { 8080 } else { port };
+
+    // Initialize hosting
+    start_lock.init_host(port);
+}
 
 #[tauri::command]
 fn start_game(gm: tauri::State<Arc<Mutex<GameManager>>>) {
@@ -78,11 +85,21 @@ pub async fn run() -> std::io::Result<()> {
     tauri::Builder::default()
         .plugin(tauri_plugin_process::init())
         .setup(|app| {
+            //game manager
             let gm = Arc::new(Mutex::new(GameManager::new(320.0, 180.0)));
             app.manage(gm.clone());
 
             let gm_for_loop = Arc::clone(&gm);
 
+            //client
+            let client = Arc::new(Mutex::new(NetworkClient::new()));
+            app.manage(client.clone());
+
+            //startup
+            let startup = Arc::new(Mutex::new(StartupManager::new(gm, client)));
+            app.manage(startup.clone());
+
+            //game loop
             start_game_loop(gm_for_loop);
 
             Ok(())
@@ -91,6 +108,7 @@ pub async fn run() -> std::io::Result<()> {
             set_game_settings,
             client_request,
             start_game,
+            host_game,
             end_game,
             quit_game,
         ])
@@ -132,33 +150,3 @@ fn start_game_loop(gm: Arc<Mutex<GameManager>>) {
         }
     });
 }
-
-fn spawn_network_manager(
-    role: Role,
-    gm: Arc<Mutex<GameManager>>,
-    nm_slot: Arc<tokio::sync::Mutex<Option<NetworkManager>>>,
-    snapshot_receiver: UnboundedReceiver<ServerEvent>,
-    client_request_receiver: UnboundedReceiver<ClientRequest>,
-    app: tauri::AppHandle,
-) {
-    tauri::async_runtime::spawn(async move {
-        match NetworkManager::new(
-            role,
-            Some(gm),
-            snapshot_receiver,
-            client_request_receiver,
-            app,
-        )
-        .await
-        {
-            Ok(nm) => {
-                *nm_slot.lock().await = Some(nm);
-                println!("NetworkManager ready");
-            }
-            Err(e) => {
-                eprintln!("Failed to start NetworkManager: {}", e);
-            }
-        }
-    });
-}
-
