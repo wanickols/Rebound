@@ -6,6 +6,7 @@ pub struct NetworkHandler {
     game_tx: UnboundedSender<ClientRequest>,
     client_requests: UnboundedReceiver<ClientRequest>,
     server_events: UnboundedReceiver<ServerEvent>,
+    client_events: UnboundedSender<ServerEvent>,
 }
 
 impl NetworkHandler {
@@ -13,11 +14,13 @@ impl NetworkHandler {
         game_tx: UnboundedSender<ClientRequest>,
         client_requests: UnboundedReceiver<ClientRequest>,
         server_events: UnboundedReceiver<ServerEvent>,
+        client_events: UnboundedSender<ServerEvent>,
     ) -> Self {
         Self {
             game_tx,
             client_requests,
             server_events,
+            client_events,
         }
     }
 
@@ -37,7 +40,6 @@ impl NetworkHandler {
     }
 
     async fn handle_server_event(&self, event: ServerEvent) {
-        // Send event to all clients
-        // Send event to host client
+        let _ = self.client_events.send(event);
     }
 }

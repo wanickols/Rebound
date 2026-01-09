@@ -2,9 +2,17 @@
 import { useRouter } from "vue-router";
 const router = useRouter();
 import { exit } from "@tauri-apps/plugin-process";
+import { invoke } from "@tauri-apps/api/core";
 
 function onHost() {
   router.push("/gameSetup");
+  invoke("host_game", { port: 0 })
+    .then(() => {
+      console.log("Game hosting started!");
+    })
+    .catch((err) => {
+      console.error("Failed to host game:", err);
+    });
 }
 
 function onJoin() {

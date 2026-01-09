@@ -1,29 +1,51 @@
-use std::sync::Arc;
+use tauri::Emitter;
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
-use tokio::sync::mpsc::UnboundedSender;
+use crate::network::{clientrequest::ClientRequest, serverevent::ServerEvent};
 
-use crate::network::clientrequest::ClientRequest;
-
+///This is a middle man class to talk between the frontend and the network for the client.
 pub struct NetworkClient {
-    pub client_request_tx: Option<UnboundedSender<ClientRequest>>,
+    pub client_request_tx: UnboundedSender<ClientRequest>,
+    pub frontend_requend_rx: UnboundedReceiver<ClientRequest>,
+    pub server_event_rx: UnboundedReceiver<ServerEvent>,
+    app: tauri::AppHandle,
 }
 
 impl NetworkClient {
-    pub fn new() -> Self {
+    pub fn new(
+        app: tauri::AppHandle,
+        client_request_tx: UnboundedSender<ClientRequest>,
+        server_event_rx: UnboundedReceiver<ServerEvent>,
+        frontend_requend_rx: UnboundedReceiver<ClientRequest>,
+    ) -> Self {
         Self {
-            client_request_tx: None,
+            client_request_tx,
+            frontend_requend_rx,
+            server_event_rx,
+            app,
         }
     }
 
-    pub fn init_sender(&mut self, client_request_tx: UnboundedSender<ClientRequest>) {
-        self.client_request_tx = Some(client_request_tx);
-    }
-
+    //To Network
     pub fn send_request(&self, req: ClientRequest) {
-        if let Some(tx) = &self.client_request_tx {
-            // ignore the Result; it only fails if receiver dropped
-            let _ = tx.send(req);
+        let _ = self.client_request_tx.send(req);
+    }
+
+    //Listen for network and frontend
+    pub async fn start_listening(&mut self) {
+        while let Some(evt) = self.server_event_rx.recv().await {
+            self.handle_server_event(evt).await;
         }
-        // else: sender doesn't exist yet, silently skip
+    }
+
+    //Emit To Frontend
+    async fn handle_server_event(&self, event: ServerEvent) {
+        match event {
+            ServerEvent::WorldSnapshot { snapshot } => {
+                if let Err(err) = self.app.emit("game-state", snapshot.clone()) {
+                    eprintln!("Failed to emit game-state: {}", err);
+                }
+            }
+        }
     }
 }

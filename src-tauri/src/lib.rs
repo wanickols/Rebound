@@ -5,25 +5,18 @@ mod startup;
 use crate::game::gamemanager::GameManager;
 use crate::game::gamepayload::GamePayload;
 
-use crate::network::clientrequest::ClientRequest;
+use crate::network::clientrequest::{self, ClientRequest};
 use crate::network::networkclient::NetworkClient;
 use crate::network::serverevent::ServerEvent;
 use crate::startup::startup::StartupManager;
 
 use std::sync::{Arc, Mutex};
-use tauri::Manager;
+use tauri::{AppHandle, Manager};
+use tokio::sync::mpsc::UnboundedSender;
 
 #[tauri::command]
-fn client_request(request: ClientRequest, client: tauri::State<Arc<Mutex<NetworkClient>>>) {
-    let client_lock = match client.lock() {
-        Ok(lock) => lock,
-        Err(poisoned) => {
-            eprintln!("Warning: NetworkClient mutex was poisoned. Recovering...");
-            poisoned.into_inner()
-        }
-    };
-
-    client_lock.send_request(request);
+fn client_request(state: tauri::State<UnboundedSender<ClientRequest>>, request: ClientRequest) {
+    let _ = state.send(request);
 }
 
 #[tauri::command]
@@ -90,13 +83,8 @@ pub async fn run() -> std::io::Result<()> {
             app.manage(gm.clone());
 
             let gm_for_loop = Arc::clone(&gm);
-
-            //client
-            let client = Arc::new(Mutex::new(NetworkClient::new()));
-            app.manage(client.clone());
-
             //startup
-            let startup = Arc::new(Mutex::new(StartupManager::new(gm, client)));
+            let startup = Arc::new(Mutex::new(StartupManager::new(gm, app.handle().clone())));
             app.manage(startup.clone());
 
             //game loop
@@ -137,7 +125,7 @@ fn start_game_loop(gm: Arc<Mutex<GameManager>>) {
                 let payload = GamePayload::from(&*gm);
                 if let Some(sender) = gm.snapshot_tx.as_ref() {
                     let _ = sender.send(ServerEvent::WorldSnapshot {
-                        snapshot: payload.clone(),
+                        snapshot: payload,
                     });
                 }
             }

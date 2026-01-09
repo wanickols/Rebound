@@ -75,6 +75,22 @@ impl GameManager {
         self.client_request_rx = client_request_rx;
     }
 
+    pub fn handle_client_request(&mut self, request: ClientRequest) -> Option<EntityId> {
+        match request {
+            ClientRequest::Add => {
+                return self.try_get_new_player();
+            }
+            ClientRequest::Remove { id } => {
+                self.remove_player(id);
+                return None;
+            }
+            ClientRequest::Input { entity_id, frame } => {
+                self.queue_input(entity_id, frame);
+                return None;
+            }
+        }
+    }
+
     pub fn queue_input(&mut self, player: EntityId, frame: InputFrame) {
         self.pending_inputs.insert(player, frame);
     }
@@ -123,6 +139,14 @@ impl GameManager {
     // }
 
     pub fn update(&mut self) {
+        //Check for network input
+        if let Some(mut rx) = self.client_request_rx.take() {
+            while let Ok(client_request) = rx.try_recv() {
+                self.handle_client_request(client_request);
+            }
+            self.client_request_rx = Some(rx);
+        }
+
         //Check Events
         for event in self.event_queue.drain() {
             match event {

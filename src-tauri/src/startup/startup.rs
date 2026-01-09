@@ -1,12 +1,13 @@
 use std::sync::{Arc, Mutex};
 
-use tokio::sync::mpsc::unbounded_channel;
+use tauri::{App, AppHandle, Manager};
+use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 
 use crate::{
     game::gamemanager::GameManager,
     network::{
         clientrequest::ClientRequest, networkclient::NetworkClient, networkhandler::NetworkHandler,
-        networkmanager::NetworkManager, serverevent::ServerEvent, socketmanager::SocketManager,
+        serverevent::ServerEvent, socketmanager::SocketManager,
     },
 };
 
@@ -14,28 +15,35 @@ pub struct StartupManager {
     nm: Option<tokio::task::JoinHandle<()>>,
     gm: Arc<Mutex<GameManager>>,
     sm: Option<SocketManager>,
-    client: Arc<Mutex<NetworkClient>>,
+    client: Option<tokio::task::JoinHandle<()>>,
+    app: AppHandle,
 }
 
 impl StartupManager {
-    pub fn new(gm: Arc<Mutex<GameManager>>, client: Arc<Mutex<NetworkClient>>) -> Self {
+    pub fn new(gm: Arc<Mutex<GameManager>>, app: AppHandle) -> Self {
         Self {
             nm: None,
             gm,
             sm: None,
-            client,
+            client: None,
+            app,
         }
     }
 
     pub fn init_host(&mut self, port: u16) {
         //gm to nm
         let (snapshot_tx, snapshot_rx) = unbounded_channel::<ServerEvent>();
-
-        //frontend/socket to nm
-        let (client_request_tx, client_request_rx) = unbounded_channel::<ClientRequest>();
-
         //nm to gm
         let (game_tx, mut game_rx) = unbounded_channel::<ClientRequest>();
+
+        //client/socket to nm
+        let (client_request_tx, client_request_rx) = unbounded_channel::<ClientRequest>();
+        //nm to client/socket
+        let (client_event_tx, client_event_rx) = unbounded_channel::<ServerEvent>();
+
+        //frontend to client
+        let (frontend_request_tx, frontend_request_rx) = unbounded_channel::<ClientRequest>();
+        self.app.manage(frontend_request_tx);
 
         //gm get's sender for snapshot and receiver for incoming client requests
         let gm_arc = self.gm.as_ref().clone();
@@ -43,14 +51,23 @@ impl StartupManager {
         let mut gm = gm_arc.lock().unwrap(); // okay to unwrap here if panic is fine on poisoned mutex
         gm.init_channels(Some(snapshot_tx), Some(game_rx));
 
-        let client_arc = self.client.as_ref().clone();
+        let mut client = NetworkClient::new(
+            self.app.clone(),
+            client_request_tx.clone(),
+            client_event_rx,
+            frontend_request_rx,
+        );
 
-        let mut client = client_arc.lock().unwrap();
-        client.init_sender(client_request_tx.clone());
+        let client_handle = tokio::spawn(async move {
+            client.start_listening().await;
+        });
+
+        self.client = Some(client_handle);
 
         // create the NM
-        let mut nm = NetworkHandler::new(game_tx, client_request_rx, snapshot_rx);
+        let mut nm = NetworkHandler::new(game_tx, client_request_rx, snapshot_rx, client_event_tx);
 
+        println!("network handler created");
         let nm_handle = tokio::spawn(async move {
             nm.start_listening().await;
         });
