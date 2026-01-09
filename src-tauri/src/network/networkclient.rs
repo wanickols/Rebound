@@ -27,14 +27,18 @@ impl NetworkClient {
     }
 
     //To Network
-    pub fn send_request(&self, req: ClientRequest) {
+    pub async fn send_request(&self, req: ClientRequest) {
         let _ = self.client_request_tx.send(req);
     }
 
     //Listen for network and frontend
     pub async fn start_listening(&mut self) {
-        while let Some(evt) = self.server_event_rx.recv().await {
-            self.handle_server_event(evt).await;
+        loop {
+            tokio::select! {
+                Some(req) = self.frontend_requend_rx.recv() => self.send_request(req).await,
+                Some(evt) = self.server_event_rx.recv() => self.handle_server_event(evt).await,
+                else => break, // both channels closed, shutdown
+            }
         }
     }
 
@@ -44,6 +48,11 @@ impl NetworkClient {
             ServerEvent::WorldSnapshot { snapshot } => {
                 if let Err(err) = self.app.emit("game-state", snapshot.clone()) {
                     eprintln!("Failed to emit game-state: {}", err);
+                }
+            }
+            ServerEvent::AddedPlayer { entity } => {
+                if let Err(err) = self.app.emit("added_player", entity.0) {
+                    eprintln!("Failed to add a player to client: {}", err);
                 }
             }
         }

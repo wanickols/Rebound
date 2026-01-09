@@ -20,62 +20,34 @@ export class InputManager {
   private bindings = new Map<number, PlayerId | null>();
 
   constructor() {
-    listen<PlayerId[]>("player-list", (event) => {
-      this.reconcilePlayers(event.payload);
+    listen<PlayerId>("added_player", (event) => {
+      const newPlayerId = event.payload;
+      console.log("New player added:", newPlayerId);
+
+      // Assign this new player to any waiting controllers
+      const freeController = Array.from(this.bindings.entries()).find(
+        ([_, bound]) => bound === null
+      );
+      if (freeController) {
+        this.bindings.set(freeController[0], newPlayerId);
+        this.players.add(newPlayerId);
+      }
     });
   }
-
-  private reconcilePlayers(newList: PlayerId[]) {
-    const incoming = new Set(newList);
-
-    // Remove players that no longer exist
-    for (const playerId of this.players) {
-      if (!incoming.has(playerId)) {
-        this.players.delete(playerId);
-
-        // detach any controller bound to this player
-        for (const [idx, bound] of this.bindings) {
-          if (bound === playerId) {
-            this.bindings.set(idx, null);
-          }
-        }
-      }
-    }
-
-    // Add new players
-    for (const playerId of incoming) {
-      if (!this.players.has(playerId)) {
-        this.players.add(playerId);
-        // do not auto-bind here unless you explicitly want that policy
-      }
-    }
-  }
-
   async onControllerConnected(index: number) {
     // register controller as known but unbound
     this.bindings.set(index, null);
 
-    // try to find an existing unbound player
+    // try to bind to an already existing unassigned player
     const freePlayer = this.findUnassignedPlayer();
     if (freePlayer !== null) {
       this.bindings.set(index, freePlayer);
       return;
     }
-    try {
-      const id = await sendClientRequestWithResponse<PlayerId | null>({
-        type: "Add",
-      });
 
-      if (id !== null) {
-        console.log("Assigned new player ID", id, "to controller", index);
-        this.players.add(id);
-        this.bindings.set(index, id);
-      } else {
-        console.warn("Failed to get a player ID from the host");
-      }
-    } catch (err) {
-      console.error("Error sending ClientRequest::Add:", err);
-    }
+    sendClientRequest({
+      type: "Add",
+    });
   }
 
   private findUnassignedPlayer(): PlayerId | null {

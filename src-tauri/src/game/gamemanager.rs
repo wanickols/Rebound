@@ -75,18 +75,16 @@ impl GameManager {
         self.client_request_rx = client_request_rx;
     }
 
-    pub fn handle_client_request(&mut self, request: ClientRequest) -> Option<EntityId> {
+    pub fn handle_client_request(&mut self, request: ClientRequest) {
         match request {
             ClientRequest::Add => {
-                return self.try_get_new_player();
+                self.try_get_new_player();
             }
             ClientRequest::Remove { id } => {
                 self.remove_player(id);
-                return None;
             }
             ClientRequest::Input { entity_id, frame } => {
                 self.queue_input(entity_id, frame);
-                return None;
             }
         }
     }
@@ -117,13 +115,16 @@ impl GameManager {
         self.phase = GamePhase::Waiting;
     }
 
-    pub fn try_get_new_player(&mut self) -> Option<EntityId> {
+    pub fn try_get_new_player(&mut self) {
         let id = self.spawn_manager.try_add_player(&mut self.world);
-        if id.is_some() {
-            println!("Added new player with id {:?}", id);
-            //self.update_player_list();
+        if let Some(new_id) = id {
+            println!("Added new player with id {:?}", new_id);
+
+            // Broadcast the "PlayerAdded" event
+            if let Some(tx) = &self.snapshot_tx {
+                let _ = tx.send(ServerEvent::AddedPlayer { entity: new_id });
+            }
         }
-        return id;
     }
 
     pub fn remove_player(&mut self, id: EntityId) {

@@ -12,7 +12,6 @@ onMounted(async () => {
   await listen<GamePayload>("game-state", (event) => {
     const payload = GamePayload.from(event.payload);
     phase.value = payload.phase;
-    console.log(phase.value);
   });
 });
 </script>
