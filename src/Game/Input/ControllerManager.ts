@@ -40,4 +40,8 @@ export class ControllerManager {
       }
     }
   }
+
+  destroy() {
+    this.knownPads.clear();
+  }
 }

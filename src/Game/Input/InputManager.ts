@@ -113,4 +113,11 @@ export class InputManager {
 
     return this.lastMove[index];
   }
+
+  destroy() {
+    // remove event listeners, stop polling controllers, cancel timers, etc.
+    this.bindings.clear();
+    this.players.clear();
+    // any other cleanup
+  }
 }
