@@ -19,25 +19,26 @@ use crate::{
 };
 
 pub struct StartupManager {
-    nm: Option<JoinHandle<()>>,
+    nh_listener: Option<JoinHandle<()>>,
     gm: Arc<Mutex<GameManager>>,
-    sm: Option<JoinHandle<()>>,
-    client: Option<JoinHandle<()>>,
+    sm_listener: Option<JoinHandle<()>>,
+    client_listener: Option<JoinHandle<()>>,
     app: AppHandle,
 }
 
 impl StartupManager {
     pub fn new(gm: Arc<Mutex<GameManager>>, app: AppHandle) -> Self {
         Self {
-            nm: None,
+            nh_listener: None,
             gm,
-            sm: None,
-            client: None,
+            sm_listener: None,
+            client_listener: None,
             app,
         }
     }
 
     pub fn init_host(&mut self, port: u16) {
+        self.close_listeners();
         //channel creation
         let (senders, receivers) = init_channels();
         self.app.manage(senders.frontend_request_tx.clone());
@@ -55,15 +56,31 @@ impl StartupManager {
         self.init_socket(port, &senders);
     }
 
-    pub fn init_join(&mut self, ip: String, port: u16) {
+    pub fn init_join(&mut self, _ip: String, _port: u16) {
+        self.close_listeners();
         // let mut nm = NetworkManager::new();
         // nm.init_socket(Role::Client { ip, port })
         //     .expect("Failed to init client socket");
         // self.nm = Some(nm);
     }
 
-    pub fn leave(&mut self) {
-        //exit code.... ;D
+    pub fn close_listeners(&mut self) {
+        // Abort client listener
+        if let Some(handle) = self.client_listener.take() {
+            handle.abort();
+        }
+
+        // Abort network manager listener
+        if let Some(handle) = self.nh_listener.take() {
+            handle.abort();
+        }
+
+        // Abort socket manager listener
+        if let Some(handle) = self.sm_listener.take() {
+            handle.abort();
+        }
+
+        println!("All listeners aborted.");
     }
 
     //Helpers:
@@ -94,7 +111,7 @@ impl StartupManager {
             client.start_listening().await;
         });
 
-        self.client = Some(client_handle);
+        self.client_listener = Some(client_handle);
     }
 
     fn init_network(
@@ -119,7 +136,7 @@ impl StartupManager {
         });
 
         // Keep the handle in self
-        self.nm = Some(nm_handle);
+        self.nh_listener = Some(nm_handle);
     }
 
     fn init_socket(&mut self, port: u16, senders: &HostChannelSenders) {
@@ -133,6 +150,6 @@ impl StartupManager {
         });
 
         // Keep the handle in self
-        self.sm = Some(sm_handle);
+        self.sm_listener = Some(sm_handle);
     }
 }
