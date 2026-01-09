@@ -1,4 +1,5 @@
 pub mod NetworkHandler;
+pub mod channels;
 pub mod clientrequest;
 pub mod networkclient;
 pub mod networkhandler;

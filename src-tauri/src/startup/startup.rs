@@ -1,21 +1,28 @@
 use std::sync::{Arc, Mutex};
 
 use tauri::{App, AppHandle, Manager};
-use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
+use tokio::{
+    sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
+    task::JoinHandle,
+};
 
 use crate::{
     game::gamemanager::GameManager,
     network::{
-        clientrequest::ClientRequest, networkclient::NetworkClient, networkhandler::NetworkHandler,
-        serverevent::ServerEvent, socketmanager::SocketManager,
+        channels::{init_channels, HostChannelReceivers, HostChannelSenders},
+        clientrequest::ClientRequest,
+        networkclient::NetworkClient,
+        networkhandler::NetworkHandler,
+        serverevent::ServerEvent,
+        socketmanager::SocketManager,
     },
 };
 
 pub struct StartupManager {
-    nm: Option<tokio::task::JoinHandle<()>>,
+    nm: Option<JoinHandle<()>>,
     gm: Arc<Mutex<GameManager>>,
-    sm: Option<SocketManager>,
-    client: Option<tokio::task::JoinHandle<()>>,
+    sm: Option<JoinHandle<()>>,
+    client: Option<JoinHandle<()>>,
     app: AppHandle,
 }
 
@@ -31,59 +38,21 @@ impl StartupManager {
     }
 
     pub fn init_host(&mut self, port: u16) {
-        //gm to nm
-        let (snapshot_tx, snapshot_rx) = unbounded_channel::<ServerEvent>();
-        //nm to gm
-        let (game_tx, mut game_rx) = unbounded_channel::<ClientRequest>();
+        //channel creation
+        let (senders, receivers) = init_channels();
+        self.app.manage(senders.frontend_request_tx.clone());
 
-        //client/socket to nm
-        let (client_request_tx, client_request_rx) = unbounded_channel::<ClientRequest>();
-        //nm to client/socket
-        let (client_event_tx, client_event_rx) = unbounded_channel::<ServerEvent>();
+        self.init_gm(&senders.snapshot_tx, receivers.game_rx);
 
-        //frontend to client
-        let (frontend_request_tx, frontend_request_rx) = unbounded_channel::<ClientRequest>();
-        self.app.manage(frontend_request_tx);
-
-        //gm get's sender for snapshot and receiver for incoming client requests
-        let gm_arc = self.gm.as_ref().clone();
-
-        let mut gm = gm_arc.lock().unwrap(); // okay to unwrap here if panic is fine on poisoned mutex
-        gm.init_channels(Some(snapshot_tx), Some(game_rx));
-
-        let mut client = NetworkClient::new(
-            self.app.clone(),
-            client_request_tx.clone(),
-            client_event_rx,
-            frontend_request_rx,
+        self.init_client(
+            &senders,
+            receivers.client_event_rx,
+            receivers.frontend_request_rx,
         );
 
-        let client_handle = tokio::spawn(async move {
-            client.start_listening().await;
-        });
+        self.init_network(&senders, receivers.snapshot_rx, receivers.client_request_rx);
 
-        self.client = Some(client_handle);
-
-        // create the NM
-        let mut nm = NetworkHandler::new(game_tx, client_request_rx, snapshot_rx, client_event_tx);
-
-        println!("network handler created");
-        let nm_handle = tokio::spawn(async move {
-            nm.start_listening().await;
-        });
-
-        // StartupManager keeps the handle, not the NM
-        self.nm = Some(nm_handle);
-
-        self.sm = Some(SocketManager::new(client_request_tx));
-
-        if let Some(mut sm) = self.sm.take() {
-            tokio::spawn(async move {
-                if let Err(e) = sm.host(port).await {
-                    eprintln!("Failed to host socket: {e}");
-                }
-            });
-        }
+        self.init_socket(port, &senders);
     }
 
     pub fn init_join(&mut self, ip: String, port: u16) {
@@ -95,5 +64,75 @@ impl StartupManager {
 
     pub fn leave(&mut self) {
         //exit code.... ;D
+    }
+
+    //Helpers:
+
+    fn init_gm(
+        &self,
+        snapshot_tx: &UnboundedSender<ServerEvent>,
+        game_rx: UnboundedReceiver<ClientRequest>,
+    ) {
+        let mut gm = self.gm.lock().unwrap(); // okay to panic on poisoned mutex
+        gm.init_channels(Some(snapshot_tx.clone()), Some(game_rx));
+    }
+
+    pub fn init_client(
+        &mut self,
+        senders: &HostChannelSenders,
+        client_event_rx: tokio::sync::mpsc::UnboundedReceiver<ServerEvent>,
+        frontend_request_rx: tokio::sync::mpsc::UnboundedReceiver<ClientRequest>,
+    ) {
+        let mut client = NetworkClient::new(
+            self.app.clone(),
+            senders.client_request_tx.clone(), // clone sender
+            client_event_rx,                   // move receiver
+            frontend_request_rx,               // move receiver
+        );
+
+        let client_handle: JoinHandle<()> = tokio::spawn(async move {
+            client.start_listening().await;
+        });
+
+        self.client = Some(client_handle);
+    }
+
+    fn init_network(
+        &mut self,
+        senders: &HostChannelSenders,
+        snapshot_rx: tokio::sync::mpsc::UnboundedReceiver<ServerEvent>,
+        client_request_rx: tokio::sync::mpsc::UnboundedReceiver<ClientRequest>,
+    ) {
+        // Create the network manager
+        let mut nm = NetworkHandler::new(
+            senders.game_tx.clone(),         // clone sender
+            client_request_rx,               // move receiver
+            snapshot_rx,                     // move receiver
+            senders.client_event_tx.clone(), // clone sender
+        );
+
+        println!("network handler created");
+
+        // Spawn its listener
+        let nm_handle: JoinHandle<()> = tokio::spawn(async move {
+            nm.start_listening().await;
+        });
+
+        // Keep the handle in self
+        self.nm = Some(nm_handle);
+    }
+
+    fn init_socket(&mut self, port: u16, senders: &HostChannelSenders) {
+        let mut sm = SocketManager::new(senders.client_request_tx.clone());
+
+        // Spawn the hosting task
+        let sm_handle: JoinHandle<()> = tokio::spawn(async move {
+            if let Err(e) = sm.host(port).await {
+                eprintln!("Failed to host socket: {e}");
+            }
+        });
+
+        // Keep the handle in self
+        self.sm = Some(sm_handle);
     }
 }
