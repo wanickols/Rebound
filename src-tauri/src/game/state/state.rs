@@ -262,9 +262,10 @@ impl State {
         s
     }
 
-    pub fn new_player(x: f32, y: f32) -> Self {
+    pub fn new_player(x: f32, y: f32, angle: f32) -> Self {
         let mut s = State::new();
         s.physics_state.pos = Vec2 { x, y };
+        s.physics_state.angle = angle;
         s.physics_state.shape = Shape::Circle { radius: 5.0 };
         s.physics_state.mass = 100.0;
         s.physics_state.friction = 20.0;

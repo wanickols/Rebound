@@ -5,6 +5,13 @@ export const FACE = {
   TOP: 3,
 } as const;
 
+export const SHOULDER = {
+  LEFT_BUMPER: 4, // L1
+  RIGHT_BUMPER: 5, // R1
+  LEFT_TRIGGER: 6, // L2
+  RIGHT_TRIGGER: 7, // R2
+} as const;
+
 export interface Vec2 {
   x: number;
   y: number;

@@ -1,7 +1,13 @@
 import { invoke } from "@tauri-apps/api/core";
 import { GamepadData } from "./ControllerManager";
 import { listen } from "@tauri-apps/api/event";
-import { FACE, InputFrame, isInputFrameEqual, Vec2 } from "./InputFrame";
+import {
+  FACE,
+  InputFrame,
+  isInputFrameEqual,
+  SHOULDER,
+  Vec2,
+} from "./InputFrame";
 import {
   sendClientRequest,
   sendClientRequestWithResponse,
@@ -96,7 +102,7 @@ export class InputManager {
       move_axis,
       look,
       buttons: {
-        grab: pad.buttons[FACE.BOTTOM],
+        grab: pad.buttons[SHOULDER.RIGHT_TRIGGER],
         dash: pad.buttons[FACE.LEFT],
         place: pad.buttons[FACE.RIGHT],
       },

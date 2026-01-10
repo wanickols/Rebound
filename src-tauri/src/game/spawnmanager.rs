@@ -1,15 +1,15 @@
 use crate::game::state::entityid::EntityId;
 use crate::game::state::{Kind, State};
 use crate::game::world::World;
-pub const PLAYER_POSITIONS: [(f32, f32); 8] = [
-    (50.0, 50.0),
-    (270.0, 50.0),
-    (50.0, 130.0),
-    (270.0, 130.0),
-    (160.0, 50.0),
-    (160.0, 130.0),
-    (90.0, 90.0),
-    (230.0, 90.0),
+pub const PLAYER_POSITIONS: [(f32, f32, f32); 8] = [
+    (50.0, 50.0, 0.0),
+    (270.0, 50.0, 3.142),
+    (50.0, 130.0, 0.0),
+    (270.0, 130.0, 3.142),
+    (160.0, 50.0, 0.0),
+    (160.0, 130.0, 3.142),
+    (90.0, 90.0, 0.0),
+    (230.0, 90.0, 3.142),
 ];
 
 pub struct SpawnManager {
@@ -39,8 +39,8 @@ impl SpawnManager {
             return None;
         }
 
-        let (x, y) = PLAYER_POSITIONS[count];
-        let player_id = self.add_player(world, x, y);
+        let (x, y, angle) = PLAYER_POSITIONS[count];
+        let player_id = self.add_player(world, x, y, angle);
         Some(player_id)
     }
 
@@ -103,13 +103,18 @@ impl SpawnManager {
                     }
                 }
                 Kind::Player => {
-                    let (px, py) = PLAYER_POSITIONS[player_index];
+                    let (px, py, angle) = PLAYER_POSITIONS[player_index];
                     state.physics_state.pos.x = px;
                     state.physics_state.pos.y = py;
+                    state.physics_state.angle = angle;
                     state.held_by = None;
                     state.physics_state.vel.x = 0.0;
                     state.physics_state.vel.y = 0.0;
-                    state.player_controller.as_mut().unwrap().reset_player();
+                    state
+                        .player_controller
+                        .as_mut()
+                        .unwrap()
+                        .reset_player(angle);
                     player_index += 1;
                 }
                 Kind::Brick => {
@@ -122,8 +127,8 @@ impl SpawnManager {
 
     ///Private
     //Add Functions:
-    pub fn add_player(&mut self, world: &mut World, x: f32, y: f32) -> EntityId {
-        let player = State::new_player(x, y);
+    pub fn add_player(&mut self, world: &mut World, x: f32, y: f32, angle: f32) -> EntityId {
+        let player = State::new_player(x, y, angle);
 
         let id = player.entity_id;
         println!("Added player with ID: {}", id.0);

@@ -30,6 +30,7 @@ impl Physics {
                         y: ps.vel.y,
                     },
                     events,
+                    dt,
                 );
 
                 ps.pos.x = x;
@@ -137,6 +138,18 @@ impl Physics {
             }
         }
         false
+    }
+
+    /// Normalize an angle in radians to the range -π..π
+    pub fn normalize_angle(angle: f32) -> f32 {
+        let mut a = angle;
+        while a > std::f32::consts::PI {
+            a -= 2.0 * std::f32::consts::PI;
+        }
+        while a < -std::f32::consts::PI {
+            a += 2.0 * std::f32::consts::PI;
+        }
+        a
     }
 
     pub fn resolve_pair(

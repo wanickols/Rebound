@@ -1,6 +1,7 @@
 use crate::game::eventqueue::{EventQueue, GameEvent};
 use crate::game::input::inputframe::Vec2;
 use crate::game::input::InputFrame;
+use crate::game::physics::Physics;
 use crate::game::state::entityid::EntityId;
 
 const PLACE_COOLDOWN_TICKS: u16 = 10;
@@ -10,6 +11,7 @@ pub struct PlayerController {
     accel: f32,
     last_angle: f32,
     max_speed: f32,
+    angular_acceleration: f32,
     action_toggle: bool,
     prev_action: bool,
     curr_brick_count: u8,
@@ -30,6 +32,7 @@ impl PlayerController {
             prev_action: false,
             curr_brick_count: 0,
             last_angle: 0.0,
+            angular_acceleration: 16.0,
             place_cooldown: 0,
             max_bricks: 3,
             input: InputFrame::new(),
@@ -43,18 +46,8 @@ impl PlayerController {
         pos: Vec2,
         vel: Vec2,
         events: &mut EventQueue,
+        dt: f32,
     ) -> (f32, f32, f32, f32, Option<f32>) {
-        //handle movement
-        let delta = self.input.move_axis;
-        let mut angle = self.handle_look(self.input.look);
-
-        //If look does nothing, see if aiming is a thing
-        if angle.is_some() {
-            self.last_angle = angle.unwrap();
-        } else {
-            angle = Some(self.last_angle);
-        }
-
         //handle actions
         if self.input.buttons.grab {
             if self.input.buttons.grab != self.prev_action {
@@ -66,11 +59,8 @@ impl PlayerController {
             self.prev_action = false;
         }
 
-        //Handle Brick Placement
-        if self.input.buttons.place {
-            self.handle_brick_placement(events, pos, angle.expect("No angle bro"));
-        }
-
+        //handle movement
+        let delta = self.input.move_axis;
         // apply acceleration to velocity
         let mut vx = vel.x + delta.x * self.accel;
         let mut vy = vel.y + delta.y * self.accel;
@@ -79,7 +69,32 @@ impl PlayerController {
         vx = vx.clamp(-self.max_speed, self.max_speed);
         vy = vy.clamp(-self.max_speed, self.max_speed);
 
-        (pos.x, pos.y, vx, vy, angle)
+        //look logic
+        // 1. Start with look
+        let mut target_angle = self.handle_look(self.input.look);
+        let mut angle_accel = self.angular_acceleration;
+        // 2. Fallback to movement if look inactive
+        if target_angle.is_none() && (delta.x != 0.0 || delta.y != 0.0) {
+            target_angle = Some(delta.y.atan2(delta.x));
+        } else {
+            angle_accel *= 2.0;
+        }
+
+        // 3. Fallback to last angle if nothing else
+        if target_angle.is_none() {
+            target_angle = Some(self.last_angle);
+        }
+        let mut current_angle = self.last_angle;
+        let delta_angle = Physics::normalize_angle(target_angle.unwrap() - current_angle);
+
+        current_angle += delta_angle * angle_accel * dt;
+
+        self.last_angle = current_angle;
+        //Handle Brick Placement
+        if self.input.buttons.place {
+            self.handle_brick_placement(events, pos, current_angle);
+        }
+        (pos.x, pos.y, vx, vy, Some(current_angle))
     }
 
     pub fn tick(&mut self, _dt: f32) {
@@ -99,12 +114,13 @@ impl PlayerController {
         }
     }
 
-    pub fn reset_player(&mut self) {
+    pub fn reset_player(&mut self, angle: f32) {
         self.curr_brick_count = 0;
         self.place_cooldown = 0;
         self.is_holding = false;
         self.action_toggle = false;
         self.prev_action = false;
+        self.last_angle = angle;
     }
 
     //Private
