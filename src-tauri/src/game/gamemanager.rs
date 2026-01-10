@@ -66,13 +66,14 @@ impl GameManager {
         gm
     }
 
-    pub fn init_channels(
+    pub fn setup_game_manager(
         &mut self,
         snapshot_tx: Option<UnboundedSender<ServerEvent>>,
         client_request_rx: Option<UnboundedReceiver<ClientRequest>>,
     ) {
         self.snapshot_tx = snapshot_tx;
         self.client_request_rx = client_request_rx;
+        
     }
 
     pub fn handle_client_request(&mut self, request: ClientRequest) {

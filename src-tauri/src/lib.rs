@@ -8,15 +8,18 @@ use crate::game::gamepayload::GamePayload;
 use crate::network::clientrequest::{self, ClientRequest};
 use crate::network::networkclient::NetworkClient;
 use crate::network::serverevent::ServerEvent;
-use crate::startup::startup::StartupManager;
+use crate::startup::startup::{ManagedSenders, StartupManager};
 
 use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Manager};
 use tokio::sync::mpsc::UnboundedSender;
 
 #[tauri::command]
-fn client_request(state: tauri::State<UnboundedSender<ClientRequest>>, request: ClientRequest) {
-    let _ = state.send(request);
+fn client_request(managed: tauri::State<ManagedSenders>, request: ClientRequest) {
+    // lock the inner senders
+    let senders = managed.inner.lock().unwrap();
+    // send on the specific channel
+    let _ = senders.frontend_request_tx.send(request);
 }
 
 #[tauri::command]
@@ -124,9 +127,7 @@ fn start_game_loop(gm: Arc<Mutex<GameManager>>) {
 
                 let payload = GamePayload::from(&*gm);
                 if let Some(sender) = gm.snapshot_tx.as_ref() {
-                    let _ = sender.send(ServerEvent::WorldSnapshot {
-                        snapshot: payload,
-                    });
+                    let _ = sender.send(ServerEvent::WorldSnapshot { snapshot: payload });
                 }
             }
 

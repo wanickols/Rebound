@@ -28,6 +28,9 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   bus.off("gamepadEvent", onGamepadEvent);
+  bus.off("controllerConnected", onControllerAvailable);
+  bus.off("controllerDisconnected", onControllerRemoved);
+
   clearInterval(intervalId);
   inputManager.value?.destroy();
   controllerManager.value?.destroy();

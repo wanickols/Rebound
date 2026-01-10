@@ -59,6 +59,7 @@ impl World {
         self.entities.clear();
         self.entity_map.clear();
         self.player_list.clear();
+        println!("Removed all entities");
     }
 
     pub fn remove_all_non_players(&mut self) {

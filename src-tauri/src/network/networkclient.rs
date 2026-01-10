@@ -51,6 +51,7 @@ impl NetworkClient {
                 }
             }
             ServerEvent::AddedPlayer { entity } => {
+                println!("Added Player");
                 if let Err(err) = self.app.emit("added_player", entity.0) {
                     eprintln!("Failed to add a player to client: {}", err);
                 }

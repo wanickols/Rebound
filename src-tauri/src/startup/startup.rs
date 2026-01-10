@@ -26,8 +26,20 @@ pub struct StartupManager {
     app: AppHandle,
 }
 
+#[derive(Clone)]
+pub struct ManagedSenders {
+    pub inner: Arc<Mutex<HostChannelSenders>>,
+}
+
 impl StartupManager {
     pub fn new(gm: Arc<Mutex<GameManager>>, app: AppHandle) -> Self {
+        // On app startup
+        let (senders, _receivers) = init_channels();
+        let managed_senders = ManagedSenders {
+            inner: Arc::new(Mutex::new(senders)),
+        };
+        app.manage(managed_senders.clone());
+
         Self {
             nh_listener: None,
             gm,
@@ -39,9 +51,8 @@ impl StartupManager {
 
     pub fn init_host(&mut self, port: u16) {
         self.close_listeners();
-        //channel creation
+
         let (senders, receivers) = init_channels();
-        self.app.manage(senders.frontend_request_tx.clone());
 
         self.init_gm(&senders.snapshot_tx, receivers.game_rx);
 
@@ -54,6 +65,10 @@ impl StartupManager {
         self.init_network(&senders, receivers.snapshot_rx, receivers.client_request_rx);
 
         self.init_socket(port, &senders);
+
+        // Update the existing managed state
+        let managed_senders = self.app.state::<ManagedSenders>();
+        *managed_senders.inner.lock().unwrap() = senders;
     }
 
     pub fn init_join(&mut self, _ip: String, _port: u16) {
@@ -91,7 +106,7 @@ impl StartupManager {
         game_rx: UnboundedReceiver<ClientRequest>,
     ) {
         let mut gm = self.gm.lock().unwrap(); // okay to panic on poisoned mutex
-        gm.init_channels(Some(snapshot_tx.clone()), Some(game_rx));
+        gm.setup_game_manager(Some(snapshot_tx.clone()), Some(game_rx));
     }
 
     pub fn init_client(
