@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { GamepadData } from "./ControllerManager";
 import { listen } from "@tauri-apps/api/event";
-import { FACE, InputFrame, Vec2 } from "./InputFrame";
+import { FACE, InputFrame, isInputFrameEqual, Vec2 } from "./InputFrame";
 import {
   sendClientRequest,
   sendClientRequestWithResponse,
@@ -12,28 +12,37 @@ export type PlayerId = number;
 export class InputManager {
   //Movement
   lastMove: Record<number, { x: number; y: number }> = {};
+  lastInput: Map<number, InputFrame> = new Map();
 
   // players that exist (from backend)
   private players = new Set<PlayerId>();
 
   // controller index → playerId (or null = unbound)
   private bindings = new Map<number, PlayerId | null>();
+  private unsubAddedPlayer?: () => void;
 
   constructor() {
-    listen<PlayerId>("added_player", (event) => {
-      const newPlayerId = event.payload;
-      console.log("New player added:", newPlayerId);
+    // async IIFE because constructors can’t be async
+    (async () => {
+      const unlisten = await listen<PlayerId>("added_player", (event) => {
+        const newPlayerId = event.payload;
+        console.log("New player added:", newPlayerId);
 
-      // Assign this new player to any waiting controllers
-      const freeController = Array.from(this.bindings.entries()).find(
-        ([_, bound]) => bound === null
-      );
-      if (freeController) {
-        this.bindings.set(freeController[0], newPlayerId);
-        this.players.add(newPlayerId);
-      }
-    });
+        const freeController = Array.from(this.bindings.entries()).find(
+          ([_, bound]) => bound === null
+        );
+        if (freeController) {
+          this.bindings.set(freeController[0], newPlayerId);
+          this.players.add(newPlayerId);
+        }
+
+        console.log(this.players);
+      });
+
+      this.unsubAddedPlayer = unlisten;
+    })();
   }
+
   async onControllerConnected(index: number) {
     // register controller as known but unbound
     this.bindings.set(index, null);
@@ -93,6 +102,15 @@ export class InputManager {
       },
     };
 
+    // Compare to last frame
+    const lastFrame = this.lastInput.get(playerId);
+    if (lastFrame && isInputFrameEqual(lastFrame, frame)) {
+      // Nothing changed, don't send
+      return;
+    }
+
+    this.lastInput.set(playerId, frame);
+
     sendClientRequest({
       type: "Input",
       entity_id: playerId,
@@ -115,9 +133,8 @@ export class InputManager {
   }
 
   destroy() {
-    // remove event listeners, stop polling controllers, cancel timers, etc.
+    this.unsubAddedPlayer?.();
     this.bindings.clear();
     this.players.clear();
-    // any other cleanup
   }
 }
