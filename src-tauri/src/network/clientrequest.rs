@@ -1,4 +1,7 @@
-use crate::game::{input::InputFrame, state::entityid::EntityId};
+use crate::{
+    game::{input::InputFrame, state::entityid::EntityId},
+    network::clientid::ClientId,
+};
 
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(tag = "type")]
@@ -11,4 +14,10 @@ pub enum ClientRequest {
         entity_id: EntityId,
         frame: InputFrame,
     },
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct ClientMessage {
+    pub client_id: ClientId,
+    pub request: ClientRequest,
 }

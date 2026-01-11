@@ -10,7 +10,8 @@ use crate::{
     game::gamemanager::GameManager,
     network::{
         channels::{init_channels, HostChannelReceivers, HostChannelSenders},
-        clientrequest::ClientRequest,
+        clientid::ClientId,
+        clientrequest::{ClientMessage, ClientRequest},
         networkclient::NetworkClient,
         networkhandler::NetworkHandler,
         serverevent::ServerEvent,
@@ -62,7 +63,7 @@ impl StartupManager {
             receivers.frontend_request_rx,
         );
 
-        self.init_network(&senders, receivers.snapshot_rx, receivers.client_request_rx);
+        self.init_network(&senders, receivers.snapshot_rx, receivers.client_message_rx);
 
         self.init_socket(port, &senders);
 
@@ -103,7 +104,7 @@ impl StartupManager {
     fn init_gm(
         &self,
         snapshot_tx: &UnboundedSender<ServerEvent>,
-        game_rx: UnboundedReceiver<ClientRequest>,
+        game_rx: UnboundedReceiver<(ClientRequest, ClientId)>,
     ) {
         let mut gm = self.gm.lock().unwrap(); // okay to panic on poisoned mutex
         gm.setup_game_manager(Some(snapshot_tx.clone()), Some(game_rx));
@@ -117,10 +118,12 @@ impl StartupManager {
     ) {
         let mut client = NetworkClient::new(
             self.app.clone(),
-            senders.client_request_tx.clone(), // clone sender
+            senders.client_message_tx.clone(), // clone sender
             client_event_rx,                   // move receiver
             frontend_request_rx,               // move receiver
         );
+
+        client.init_id(true, None);
 
         let client_handle: JoinHandle<()> = tokio::spawn(async move {
             client.start_listening().await;
@@ -133,12 +136,12 @@ impl StartupManager {
         &mut self,
         senders: &HostChannelSenders,
         snapshot_rx: tokio::sync::mpsc::UnboundedReceiver<ServerEvent>,
-        client_request_rx: tokio::sync::mpsc::UnboundedReceiver<ClientRequest>,
+        client_message_rx: tokio::sync::mpsc::UnboundedReceiver<ClientMessage>,
     ) {
         // Create the network manager
         let mut nm = NetworkHandler::new(
             senders.game_tx.clone(),         // clone sender
-            client_request_rx,               // move receiver
+            client_message_rx,               // move receiver
             snapshot_rx,                     // move receiver
             senders.client_event_tx.clone(), // clone sender
         );
@@ -155,7 +158,7 @@ impl StartupManager {
     }
 
     fn init_socket(&mut self, port: u16, senders: &HostChannelSenders) {
-        let mut sm = SocketManager::new(senders.client_request_tx.clone());
+        let mut sm = SocketManager::new();
 
         // Spawn the hosting task
         let sm_handle: JoinHandle<()> = tokio::spawn(async move {
@@ -163,6 +166,8 @@ impl StartupManager {
                 eprintln!("Failed to host socket: {e}");
             }
         });
+
+        //todo add polling for socket manager
 
         // Keep the handle in self
         self.sm_listener = Some(sm_handle);

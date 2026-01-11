@@ -6,6 +6,7 @@ use crate::game::spawnmanager::SpawnManager;
 
 use crate::game::state::entityid::EntityId;
 use crate::game::world::World;
+use crate::network::clientid::ClientId;
 use crate::network::clientrequest::ClientRequest;
 use crate::network::serverevent::ServerEvent;
 use std::collections::HashMap;
@@ -25,7 +26,7 @@ pub struct GameManager {
     pub world: World,
     pending_inputs: HashMap<EntityId, InputFrame>,
     pub snapshot_tx: Option<UnboundedSender<ServerEvent>>,
-    pub client_request_rx: Option<UnboundedReceiver<ClientRequest>>,
+    pub client_request_rx: Option<UnboundedReceiver<(ClientRequest, ClientId)>>,
     pub phase: GamePhase,
     pub event_queue: EventQueue,
     pub score_manager: ScoreManager,
@@ -69,17 +70,16 @@ impl GameManager {
     pub fn setup_game_manager(
         &mut self,
         snapshot_tx: Option<UnboundedSender<ServerEvent>>,
-        client_request_rx: Option<UnboundedReceiver<ClientRequest>>,
+        client_request_rx: Option<UnboundedReceiver<(ClientRequest, ClientId)>>,
     ) {
         self.snapshot_tx = snapshot_tx;
         self.client_request_rx = client_request_rx;
-        
     }
 
-    pub fn handle_client_request(&mut self, request: ClientRequest) {
+    pub fn handle_client_request(&mut self, request: ClientRequest, id: ClientId) {
         match request {
             ClientRequest::Add => {
-                self.try_get_new_player();
+                self.try_get_new_player(id);
             }
             ClientRequest::Remove { id } => {
                 self.remove_player(id);
@@ -116,14 +116,17 @@ impl GameManager {
         self.phase = GamePhase::Waiting;
     }
 
-    pub fn try_get_new_player(&mut self) {
+    pub fn try_get_new_player(&mut self, client_id: ClientId) {
         let id = self.spawn_manager.try_add_player(&mut self.world);
         if let Some(new_id) = id {
             println!("Added new player with id {:?}", new_id);
 
             // Broadcast the "PlayerAdded" event
             if let Some(tx) = &self.snapshot_tx {
-                let _ = tx.send(ServerEvent::AddedPlayer { entity: new_id });
+                let _ = tx.send(ServerEvent::AddedPlayer {
+                    entity: new_id,
+                    client: client_id,
+                });
             }
         }
     }
@@ -144,7 +147,7 @@ impl GameManager {
         //Check for network input
         if let Some(mut rx) = self.client_request_rx.take() {
             while let Ok(client_request) = rx.try_recv() {
-                self.handle_client_request(client_request);
+                self.handle_client_request(client_request.0, client_request.1);
             }
             self.client_request_rx = Some(rx);
         }
