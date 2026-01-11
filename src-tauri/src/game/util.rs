@@ -1,3 +1,5 @@
+use rand::Rng;
+
 pub struct Util();
 
 impl Util {
@@ -10,5 +12,9 @@ impl Util {
             let (left, right) = slice.split_at_mut(i);
             (&mut right[0], &mut left[j])
         }
+    }
+
+    pub fn random_port() -> u16 {
+        rand::thread_rng().gen_range(49152..65535)
     }
 }

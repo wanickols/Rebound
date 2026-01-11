@@ -3,6 +3,7 @@ use std::{collections::HashSet, net::SocketAddr};
 use std::io::Result;
 use tokio::net::UdpSocket;
 use tokio::sync::mpsc::UnboundedSender;
+use tokio::sync::watch;
 
 use crate::network::{
     clientrequest::ClientRequest, networkinfo::NetworkInfo, serverevent::ServerEvent,
@@ -12,19 +13,34 @@ use crate::network::{
 pub struct SocketManager {
     socket: Option<UdpSocket>,
     host_addr: Option<SocketAddr>,
+    data_tx: UnboundedSender<SocketData>,
+}
+
+pub type SocketData = (SocketAddr, Vec<u8>);
+
+impl Drop for SocketManager {
+    fn drop(&mut self) {
+        println!("Closing socket");
+    }
 }
 
 impl SocketManager {
-    pub fn new() -> Self {
+    pub fn new(data_tx: UnboundedSender<SocketData>) -> Self {
         Self {
             socket: None,
             host_addr: None,
+            data_tx,
         }
     }
 
     pub async fn host(&mut self, port: u16) -> Result<()> {
         let bind_addr = SocketAddr::from(([0, 0, 0, 0], port));
-        let socket = UdpSocket::bind(bind_addr).await?;
+
+        // Bind with std first
+        let std_socket = std::net::UdpSocket::bind(bind_addr)?;
+
+        // Convert to Tokio socket
+        let socket = UdpSocket::from_std(std_socket)?;
 
         let local_addr = socket.local_addr()?;
         println!("Hosting on {}", local_addr);
@@ -36,12 +52,45 @@ impl SocketManager {
     }
 
     //listens, and sends to bytes to network manager
-    pub fn poll_socket(&mut self, tx: &UnboundedSender<(SocketAddr, Vec<u8>)>) {
+    pub async fn poll_socket(&mut self, mut shutdown_rx: watch::Receiver<bool>) -> Result<()> {
         let mut buf = [0u8; 1024];
-        while let Some((len, addr)) = self.try_recv_from(&mut buf) {
-            let bytes = buf[..len].to_vec();
-            let _ = tx.send((addr, bytes));
+
+        // Take the socket out of the Option temporarily to avoid unwraps
+        let socket = self.socket.take().expect("Socket not initialized");
+
+        loop {
+            tokio::select! {
+                // Shutdown signal triggered
+                _ = shutdown_rx.changed() => {
+                    if *shutdown_rx.borrow() {
+                        println!("Socket shutting down");
+                        break;
+                    }
+                }
+
+                // Try to receive from the socket
+                result = socket.recv_from(&mut buf) => {
+                    match result {
+                        Ok((len, addr)) => {
+                            let bytes = buf[..len].to_vec();
+                            let _ = self.data_tx.send((addr, bytes));
+                            tokio::task::yield_now().await;
+                        }
+                        Err(e) => {
+                            eprintln!("Socket recv error: {e}");
+                            // Optionally break or continue depending on error
+                        }
+                    }
+                }
+            }
         }
+
+        println!("Socket poll loop exited");
+
+        // Put the socket back into self so it can be reused/dropped
+        self.socket = Some(socket);
+
+        Ok(())
     }
 
     //checks for any data on socket

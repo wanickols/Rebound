@@ -5,7 +5,6 @@ This project is in active development, and I'm not organized enough to have a bu
 ## Todo:
 
 now
-- add client id's for add player events
 - fix socket manager to work again with client test
 - get player leave option
 
