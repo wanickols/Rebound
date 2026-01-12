@@ -2,7 +2,7 @@ use std::{collections::HashSet, net::SocketAddr};
 
 use std::io::Result;
 use tokio::net::UdpSocket;
-use tokio::sync::mpsc::UnboundedSender;
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio::sync::watch;
 
 use crate::network::{
@@ -13,7 +13,8 @@ use crate::network::{
 pub struct SocketManager {
     socket: Option<UdpSocket>,
     host_addr: Option<SocketAddr>,
-    data_tx: UnboundedSender<SocketData>,
+    incoming_data_tx: UnboundedSender<SocketData>,
+    outgoign_data_rx: UnboundedReceiver<SocketData>,
 }
 
 pub type SocketData = (SocketAddr, Vec<u8>);
@@ -25,11 +26,15 @@ impl Drop for SocketManager {
 }
 
 impl SocketManager {
-    pub fn new(data_tx: UnboundedSender<SocketData>) -> Self {
+    pub fn new(
+        incoming_data_tx: UnboundedSender<SocketData>,
+        outgoign_data_rx: UnboundedReceiver<SocketData>,
+    ) -> Self {
         Self {
             socket: None,
             host_addr: None,
-            data_tx,
+            incoming_data_tx,
+            outgoign_data_rx,
         }
     }
 
@@ -73,7 +78,7 @@ impl SocketManager {
                     match result {
                         Ok((len, addr)) => {
                             let bytes = buf[..len].to_vec();
-                            let _ = self.data_tx.send((addr, bytes));
+                            let _ = self.incoming_data_tx.send((addr, bytes));
                             tokio::task::yield_now().await;
                         }
                         Err(e) => {

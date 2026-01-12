@@ -18,7 +18,8 @@ pub struct NetworkHandler {
     client_message: UnboundedReceiver<ClientMessage>,
     server_events: UnboundedReceiver<ServerEvent>,
     client_events: UnboundedSender<ServerEvent>,
-    socket_data: UnboundedReceiver<SocketData>,
+    incoming_socket_data: UnboundedReceiver<SocketData>,
+    outgoing_socket_data: UnboundedSender<SocketData>,
 }
 
 impl NetworkHandler {
@@ -27,7 +28,8 @@ impl NetworkHandler {
         client_message: UnboundedReceiver<ClientMessage>,
         server_events: UnboundedReceiver<ServerEvent>,
         client_events: UnboundedSender<ServerEvent>,
-        socket_data: UnboundedReceiver<SocketData>,
+        incoming_socket_data: UnboundedReceiver<SocketData>,
+        outgoing_socket_data: UnboundedSender<SocketData>,
     ) -> Self {
         Self {
             client_map: HashMap::new(),
@@ -35,17 +37,17 @@ impl NetworkHandler {
             client_message,
             server_events,
             client_events,
-            socket_data,
+            incoming_socket_data,
+            outgoing_socket_data,
         }
     }
 
     pub async fn start_listening(&mut self) {
         loop {
             tokio::select! {
-                Some(dta) = self.socket_data.recv() => self.handle_socket_data(dta).await,
+                Some(dta) = self.incoming_socket_data.recv() => self.handle_socket_data(dta).await,
                 Some(req) = self.client_message.recv() => self.handle_client_request(req).await,
                 Some(evt) = self.server_events.recv() => self.handle_server_event(evt).await,
-
                 else => break, // all channels closed, shutdown
             }
         }

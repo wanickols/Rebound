@@ -16,7 +16,10 @@ pub struct HostChannelReceivers {
     pub client_message_rx: UnboundedReceiver<ClientMessage>,
     pub client_event_rx: UnboundedReceiver<ServerEvent>,
     pub frontend_request_rx: UnboundedReceiver<ClientRequest>,
-    pub socket_data_rx: UnboundedReceiver<SocketData>,
+
+    pub incoming_socket_data_rx: UnboundedReceiver<SocketData>,
+    pub outgoing_socket_data_rx: UnboundedReceiver<SocketData>,
+
     pub shutdown_rx: tokio::sync::watch::Receiver<bool>,
 }
 
@@ -26,7 +29,10 @@ pub struct HostChannelSenders {
     pub client_message_tx: UnboundedSender<ClientMessage>,
     pub client_event_tx: UnboundedSender<ServerEvent>,
     pub frontend_request_tx: UnboundedSender<ClientRequest>,
-    pub socket_data_tx: UnboundedSender<SocketData>,
+
+    pub incoming_socket_data_tx: UnboundedSender<SocketData>,
+    pub outgoing_socket_data_tx: UnboundedSender<SocketData>,
+
     pub shutdown_tx: tokio::sync::watch::Sender<bool>,
 }
 
@@ -36,7 +42,10 @@ pub fn init_channels() -> (HostChannelSenders, HostChannelReceivers) {
     let (client_message_tx, client_message_rx) = unbounded_channel::<ClientMessage>();
     let (client_event_tx, client_event_rx) = unbounded_channel::<ServerEvent>();
     let (frontend_request_tx, frontend_request_rx) = unbounded_channel::<ClientRequest>();
-    let (socket_data_tx, socket_data_rx) = unbounded_channel::<SocketData>();
+
+    let (incoming_socket_data_tx, incoming_socket_data_rx) = unbounded_channel::<SocketData>();
+    let (outgoing_socket_data_tx, outgoing_socket_data_rx) = unbounded_channel::<SocketData>();
+
     let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
 
     let senders = HostChannelSenders {
@@ -45,7 +54,8 @@ pub fn init_channels() -> (HostChannelSenders, HostChannelReceivers) {
         client_message_tx,
         client_event_tx,
         frontend_request_tx,
-        socket_data_tx,
+        incoming_socket_data_tx,
+        outgoing_socket_data_tx,
         shutdown_tx,
     };
 
@@ -55,7 +65,8 @@ pub fn init_channels() -> (HostChannelSenders, HostChannelReceivers) {
         client_message_rx,
         client_event_rx,
         frontend_request_rx,
-        socket_data_rx,
+        incoming_socket_data_rx,
+        outgoing_socket_data_rx,
         shutdown_rx,
     };
 

@@ -69,10 +69,15 @@ impl StartupManager {
             &senders,
             receivers.snapshot_rx,
             receivers.client_message_rx,
-            receivers.socket_data_rx,
+            receivers.incoming_socket_data_rx,
         );
 
-        self.init_socket(port, &senders, receivers.shutdown_rx);
+        self.init_socket(
+            port,
+            &senders,
+            receivers.outgoing_socket_data_rx,
+            receivers.shutdown_rx,
+        );
 
         self.shutdown_tx = Some(senders.shutdown_tx.clone());
         // Update the existing managed state
@@ -150,7 +155,7 @@ impl StartupManager {
         senders: &HostChannelSenders,
         snapshot_rx: UnboundedReceiver<ServerEvent>,
         client_message_rx: UnboundedReceiver<ClientMessage>,
-        socket_data: UnboundedReceiver<SocketData>,
+        incoming_socket_data: UnboundedReceiver<SocketData>,
     ) {
         // Create the network manager
         let mut nm = NetworkHandler::new(
@@ -158,7 +163,8 @@ impl StartupManager {
             client_message_rx,       // move receiver
             snapshot_rx,
             senders.client_event_tx.clone(),
-            socket_data,
+            incoming_socket_data,
+            senders.outgoing_socket_data_tx.clone(),
         );
 
         println!("network handler created");
@@ -176,9 +182,13 @@ impl StartupManager {
         &mut self,
         port: u16,
         senders: &HostChannelSenders,
+        outgoing_socket_data_rx: UnboundedReceiver<SocketData>,
         shutdown_rx: tokio::sync::watch::Receiver<bool>,
     ) {
-        let mut sm = SocketManager::new(senders.socket_data_tx.clone());
+        let mut sm = SocketManager::new(
+            senders.incoming_socket_data_tx.clone(),
+            outgoing_socket_data_rx,
+        );
 
         // Spawn the hosting task
         let sm_handle: JoinHandle<()> = tokio::spawn(async move {

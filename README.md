@@ -5,13 +5,13 @@ This project is in active development, and I'm not organized enough to have a bu
 ## Todo:
 
 now
-- fix socket manager to work again with client test
+
+- add join logic
 - get player leave option
 
 later
 
 - add quit game across server
-- add join logic
 
 - Add error handling
 - async processing for network manager
