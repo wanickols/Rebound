@@ -7,6 +7,7 @@ use crate::{
 #[serde(tag = "type")]
 pub enum ClientRequest {
     Add,
+    Joined,
     Remove {
         id: EntityId,
     },
@@ -18,6 +19,15 @@ pub enum ClientRequest {
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct ClientMessage {
-    pub client_id: ClientId,
+    pub client_id: Option<ClientId>,
     pub request: ClientRequest,
+}
+
+impl ClientMessage {
+    pub fn new(client_id: ClientId, request: ClientRequest) -> Self {
+        Self {
+            client_id: Some(client_id),
+            request,
+        }
+    }
 }

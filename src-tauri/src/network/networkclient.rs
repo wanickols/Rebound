@@ -44,18 +44,9 @@ impl NetworkClient {
     //To Network
 
     pub async fn send_request(&self, req: ClientRequest) {
-        // Make sure the client has an ID
-        let client_id = match self.id {
-            Some(id) => id,
-            None => {
-                eprintln!("Client ID not set, cannot send request");
-                return;
-            }
-        };
-
         // Wrap the request in a ClientMessage
         let msg = ClientMessage {
-            client_id,
+            client_id: self.id,
             request: req,
         };
 
@@ -75,7 +66,7 @@ impl NetworkClient {
     }
 
     //Emit To Frontend
-    async fn handle_server_event(&self, event: ServerEvent) {
+    async fn handle_server_event(&mut self, event: ServerEvent) {
         match event {
             ServerEvent::WorldSnapshot { snapshot } => {
                 if let Err(err) = self.app.emit("game-state", snapshot.clone()) {
@@ -90,6 +81,12 @@ impl NetworkClient {
                 if let Err(err) = self.app.emit("added_player", entity.0) {
                     eprintln!("Failed to add a player to client: {}", err);
                 }
+            }
+            ServerEvent::Joined { client_id } => {
+                if client_id.is_none() {
+                    eprintln!("Client is handling initial join request");
+                }
+                self.id = client_id;
             }
         }
     }

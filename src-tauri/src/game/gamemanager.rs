@@ -87,6 +87,7 @@ impl GameManager {
             ClientRequest::Input { entity_id, frame } => {
                 self.queue_input(entity_id, frame);
             }
+            _ => {}
         }
     }
 

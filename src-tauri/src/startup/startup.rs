@@ -11,6 +11,7 @@ use crate::{
     network::{
         channels::{init_channels, HostChannelReceivers, HostChannelSenders},
         clientid::ClientId,
+        clientnetworkhandler::ClientNetworkHandler,
         clientrequest::{ClientMessage, ClientRequest},
         networkclient::NetworkClient,
         networkhandler::NetworkHandler,
@@ -85,12 +86,28 @@ impl StartupManager {
         *managed_senders.inner.lock().unwrap() = senders;
     }
 
-    pub fn init_join(&mut self, _ip: String, _port: u16) {
+    pub fn init_join(&mut self, _ip: String, port: u16) {
         self.close_listeners();
-        // let mut nm = NetworkManager::new();
-        // nm.init_socket(Role::Client { ip, port })
-        //     .expect("Failed to init client socket");
-        // self.nm = Some(nm);
+        let (senders, receivers) = init_channels();
+
+        self.init_client(
+            &senders,
+            receivers.client_event_rx,
+            receivers.frontend_request_rx,
+        );
+
+        self.init_socket(
+            port,
+            &senders,
+            receivers.outgoing_socket_data_rx,
+            receivers.shutdown_rx,
+        );
+
+        self.init_client_network(
+            &senders,
+            receivers.client_message_rx,
+            receivers.incoming_socket_data_rx,
+        );
     }
 
     pub fn close_listeners(&mut self) {
@@ -172,6 +189,28 @@ impl StartupManager {
         // Spawn its listener
         let nm_handle: JoinHandle<()> = tokio::spawn(async move {
             nm.start_listening().await;
+        });
+
+        // Keep the handle in self
+        self.nh_listener = Some(nm_handle);
+    }
+
+    fn init_client_network(
+        &mut self,
+        senders: &HostChannelSenders,
+        incoming_client_request: UnboundedReceiver<ClientMessage>,
+        incoming_socket_data: UnboundedReceiver<SocketData>,
+    ) {
+        let mut cnh = ClientNetworkHandler::new(
+            incoming_client_request,
+            senders.client_event_tx.clone(),
+            incoming_socket_data,
+            senders.outgoing_socket_data_tx.clone(),
+        );
+
+        // Spawn its listener
+        let nm_handle: JoinHandle<()> = tokio::spawn(async move {
+            cnh.start_listening().await;
         });
 
         // Keep the handle in self
