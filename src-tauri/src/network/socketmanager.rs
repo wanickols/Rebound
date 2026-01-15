@@ -1,3 +1,4 @@
+use std::net::IpAddr;
 use std::{collections::HashSet, net::SocketAddr};
 
 use std::io::Result;
@@ -52,6 +53,26 @@ impl SocketManager {
 
         self.socket = Some(socket);
         self.host_addr = None;
+
+        Ok(())
+    }
+
+    pub async fn join(&mut self, port: u16) -> Result<()> {
+        // Bind to any available local port
+        let bind_addr = SocketAddr::from(([0, 0, 0, 0], 0));
+        let std_socket = std::net::UdpSocket::bind(bind_addr)?;
+
+        let socket = UdpSocket::from_std(std_socket)?;
+
+        let host_addr = SocketAddr::from(([127, 0, 0, 1], port));
+
+        // Fire off a join packet (bare minimum)
+        socket.send_to(b"JOIN", host_addr).await?;
+
+        println!("Joining host at {}", host_addr);
+
+        self.socket = Some(socket);
+        self.host_addr = Some(host_addr);
 
         Ok(())
     }

@@ -16,7 +16,7 @@ function onHost() {
 }
 
 function onJoin() {
-  router.push("/joinGame");
+  router.push("/join");
 }
 
 async function onQuit() {

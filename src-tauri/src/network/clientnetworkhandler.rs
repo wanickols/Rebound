@@ -89,6 +89,7 @@ impl ClientNetworkHandler {
                 // First contact: establish host
                 if self.host_addr.is_none() {
                     self.host_addr = Some(peer_addr);
+                    //send client join
                     return;
                 }
 

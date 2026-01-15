@@ -57,6 +57,22 @@ fn host_game(port: u16, startup: tauri::State<Arc<Mutex<StartupManager>>>) {
 }
 
 #[tauri::command]
+fn join_game(port: u16, startup: tauri::State<Arc<Mutex<StartupManager>>>) {
+    let mut start_lock = match startup.lock() {
+        Ok(lock) => lock,
+        Err(poisoned) => {
+            // Recover from a poisoned mutex by taking the inner value
+            eprintln!("Warning: StartupManager mutex was poisoned. Recovering...");
+            poisoned.into_inner()
+        }
+    };
+
+    let port = if port == 0 { 8080 } else { port };
+
+    start_lock.init_join(port);
+}
+
+#[tauri::command]
 fn start_game(gm: tauri::State<Arc<Mutex<GameManager>>>) {
     let mut gm = gm.lock().unwrap();
     gm.start_game();
@@ -100,6 +116,7 @@ pub async fn run() -> std::io::Result<()> {
             client_request,
             start_game,
             host_game,
+            join_game,
             end_game,
             quit_game,
         ])

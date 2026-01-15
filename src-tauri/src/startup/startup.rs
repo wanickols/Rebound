@@ -74,6 +74,7 @@ impl StartupManager {
         );
 
         self.init_socket(
+            true,
             port,
             &senders,
             receivers.outgoing_socket_data_rx,
@@ -86,7 +87,7 @@ impl StartupManager {
         *managed_senders.inner.lock().unwrap() = senders;
     }
 
-    pub fn init_join(&mut self, _ip: String, port: u16) {
+    pub fn init_join(&mut self, port: u16) {
         self.close_listeners();
         let (senders, receivers) = init_channels();
 
@@ -97,6 +98,7 @@ impl StartupManager {
         );
 
         self.init_socket(
+            false,
             port,
             &senders,
             receivers.outgoing_socket_data_rx,
@@ -219,6 +221,7 @@ impl StartupManager {
 
     fn init_socket(
         &mut self,
+        is_host: bool,
         port: u16,
         senders: &HostChannelSenders,
         outgoing_socket_data_rx: UnboundedReceiver<SocketData>,
@@ -229,19 +232,35 @@ impl StartupManager {
             outgoing_socket_data_rx,
         );
 
-        // Spawn the hosting task
-        let sm_handle: JoinHandle<()> = tokio::spawn(async move {
-            if let Err(e) = sm.host(port).await {
-                eprintln!("Failed to host socket: {e}");
-                return;
-            }
+        if is_host {
+            // Spawn the hosting task
+            let sm_handle: JoinHandle<()> = tokio::spawn(async move {
+                if let Err(e) = sm.host(port).await {
+                    eprintln!("Failed to host socket: {e}");
+                    return;
+                }
 
-            let _ = sm.poll_socket(shutdown_rx).await;
-        });
+                let _ = sm.poll_socket(shutdown_rx).await;
+            });
 
-        //todo add polling for socket manager
+            //todo add polling for socket manager
 
-        // Keep the handle in self
-        self.sm_listener = Some(sm_handle);
+            // Keep the handle in self
+            self.sm_listener = Some(sm_handle);
+        } else {
+            let sm_handle: JoinHandle<()> = tokio::spawn(async move {
+                if let Err(e) = sm.join(port).await {
+                    eprintln!("Failed to host socket: {e}");
+                    return;
+                }
+
+                let _ = sm.poll_socket(shutdown_rx).await;
+            });
+
+            //todo add polling for socket manager
+
+            // Keep the handle in self
+            self.sm_listener = Some(sm_handle);
+        }
     }
 }

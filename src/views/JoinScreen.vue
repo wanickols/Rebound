@@ -25,6 +25,7 @@
 </template>
 
 <script setup lang="ts">
+import { invoke } from "@tauri-apps/api/core";
 import { ref } from "vue";
 
 const port = ref<number | null>(null);
@@ -32,7 +33,12 @@ const port = ref<number | null>(null);
 function join() {
   // ultra-rough for now: just log it
   console.log("Joining on port:", port.value);
-
-  // later: emit event / call network manager
+  invoke("join_game", { port: 8080 })
+    .then(() => {
+      console.log("Game hosting started!");
+    })
+    .catch((err) => {
+      console.error("Failed to host game:", err);
+    });
 }
 </script>
