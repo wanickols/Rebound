@@ -1,5 +1,6 @@
 use std::{collections::btree_map, net::SocketAddr};
 
+use tauri::http::Request;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
 use crate::network::{
@@ -51,7 +52,6 @@ impl ClientNetworkHandler {
     }
 
     async fn handle_socket_data(&mut self, data: SocketData) {
-        println!("recieved:");
         let (peer_addr, bytes) = data;
 
         //deserialize
@@ -68,7 +68,7 @@ impl ClientNetworkHandler {
 
         // --- Handshake path ---
         if matches!(msg, ServerEvent::Joined { .. }) {
-            self.handle_joined(peer_addr, msg);
+            self.handle_joined(peer_addr, msg).await;
             return;
         }
 
@@ -83,18 +83,21 @@ impl ClientNetworkHandler {
         }
     }
 
-    fn handle_joined(&mut self, peer_addr: SocketAddr, msg: ServerEvent) {
+    async fn handle_joined(&mut self, peer_addr: SocketAddr, msg: ServerEvent) {
+        println!("Recieving Join data");
         match msg {
             ServerEvent::Joined { client_id } => {
                 // First contact: establish host
                 if self.host_addr.is_none() {
                     self.host_addr = Some(peer_addr);
-                    //send client join
+                    self.send_join_reqeust().await;
+
                     return;
                 }
 
                 // Second contact: finalize identity
                 if let Some(id) = client_id {
+                    println!("Sending data 2");
                     let _ = self.outgoing_server_event.send(ServerEvent::Joined {
                         client_id: Some(id),
                     });
@@ -104,18 +107,33 @@ impl ClientNetworkHandler {
         }
     }
 
+    async fn send_join_reqeust(&self) {
+        let req = ClientRequest::Joined;
+        let msg = ClientMessage::new(ClientId::new(), req);
+        self.handle_client_request(msg).await;
+    }
+
     //just from client
     async fn handle_client_request(&self, msg: ClientMessage) {
         if self.host_addr.is_none() {
             eprintln!("Host address does not exist");
             return;
         }
-
         match serde_json::to_vec(&msg) {
             Ok(bytes) => {
-                let _ = self
+                match self
                     .outgoing_socket_data
-                    .send((self.host_addr.unwrap(), bytes));
+                    .send((self.host_addr.unwrap(), bytes))
+                {
+                    Ok(_) => {
+                        println!("Enqueued outgoing data for sending");
+                    }
+                    Err(e) => {
+                        eprintln!("Failed to enqueue outgoing data: {e}");
+                    }
+                }
+
+                println!("Sending data 1");
             }
             Err(e) => {
                 eprintln!("Failed to serialize ClientMessage: {}", e);

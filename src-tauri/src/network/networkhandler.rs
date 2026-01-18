@@ -56,7 +56,6 @@ impl NetworkHandler {
     }
 
     async fn handle_socket_data(&mut self, data: SocketData) {
-        println!("recieved:");
         let (peer_addr, bytes) = data;
 
         //deserialize
@@ -64,9 +63,12 @@ impl NetworkHandler {
             Ok(m) => m,
             Err(e) => {
                 eprintln!(
-                    "Failed to deserialize client message from {}: {}",
-                    peer_addr, e
+                    "Failed to deserialize client message from {}: {:?} {}",
+                    peer_addr, bytes, e
                 );
+                if !self.clients_by_addr.contains_key(&peer_addr) {
+                    self.send_blank_join(peer_addr);
+                }
                 return;
             }
         };
@@ -94,6 +96,7 @@ impl NetworkHandler {
         if self.clients_by_addr.contains_key(&peer_addr) {
             return;
         }
+        println!("Recieving join req");
 
         let client_id = ClientId::new();
         self.clients_by_addr.insert(peer_addr, client_id);
@@ -104,7 +107,17 @@ impl NetworkHandler {
         };
 
         let bytes = serde_json::to_vec(&event).unwrap();
-        let _ = self.outgoing_socket_data.send((peer_addr, bytes));
+        self.send_over_network(peer_addr, bytes);
+    }
+
+    fn send_blank_join(&self, addr: SocketAddr) {
+        let blank_join = ServerEvent::Joined { client_id: None };
+        let bytes = match serde_json::to_vec(&blank_join) {
+            Ok(b) => b,
+            Err(_) => return,
+        };
+        self.send_over_network(addr, bytes);
+        println!("Sending blank");
     }
 
     //just from client
@@ -125,11 +138,11 @@ impl NetworkHandler {
             ServerEvent::Joined {
                 client_id: Some(id),
             } => {
-                self.send_to_client(*id, event);
+                self.compose_client_send(*id, event);
             }
 
             ServerEvent::AddedPlayer { client, .. } => {
-                self.send_to_client(*client, event);
+                self.compose_client_send(*client, event);
             }
 
             ServerEvent::WorldSnapshot { .. } => {
@@ -140,16 +153,15 @@ impl NetworkHandler {
         }
     }
 
-    fn send_to_client(&self, client_id: ClientId, event: ServerEvent) {
+    fn compose_client_send(&self, client_id: ClientId, event: ServerEvent) {
         if let Some(addr) = self.clients_by_id.get(&client_id) {
             let bytes = match serde_json::to_vec(&event) {
                 Ok(b) => b,
                 Err(_) => return,
             };
-
-            let _ = self.outgoing_socket_data.send((*addr, bytes));
+            self.send_over_network(*addr, bytes);
         } else {
-            let _ = self.client_events.send(event); //host client isn't stored
+            self.send_to_host_client(event); //host client isn't stored
         }
     }
 
@@ -160,8 +172,17 @@ impl NetworkHandler {
         };
 
         for addr in self.clients_by_id.values() {
-            let _ = self.outgoing_socket_data.send((*addr, bytes.clone()));
+            self.send_over_network(*addr, bytes.clone());
+
         }
+        self.send_to_host_client(event);
+    }
+
+    fn send_over_network(&self, addr: SocketAddr, bytes: Vec<u8>) {
+        let _ = self.outgoing_socket_data.send((addr, bytes));
+    }
+
+    fn send_to_host_client(&self, event: ServerEvent) {
         let _ = self.client_events.send(event); //host client
     }
 }

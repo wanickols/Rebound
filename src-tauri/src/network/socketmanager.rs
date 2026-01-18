@@ -1,4 +1,6 @@
 use std::net::IpAddr;
+use std::sync::Arc;
+use std::time::Duration;
 use std::{collections::HashSet, net::SocketAddr};
 
 use std::io::Result;
@@ -12,10 +14,9 @@ use crate::network::{
 
 //Consider using state enum here to make sure bad socketmanager's can't be made :D
 pub struct SocketManager {
-    socket: Option<UdpSocket>,
-    host_addr: Option<SocketAddr>,
+    socket: Arc<UdpSocket>,
     incoming_data_tx: UnboundedSender<SocketData>,
-    outgoign_data_rx: UnboundedReceiver<SocketData>,
+    outgoing_data_rx: UnboundedReceiver<SocketData>,
 }
 
 pub type SocketData = (SocketAddr, Vec<u8>);
@@ -27,19 +28,11 @@ impl Drop for SocketManager {
 }
 
 impl SocketManager {
-    pub fn new(
+    pub async fn host(
         incoming_data_tx: UnboundedSender<SocketData>,
-        outgoign_data_rx: UnboundedReceiver<SocketData>,
-    ) -> Self {
-        Self {
-            socket: None,
-            host_addr: None,
-            incoming_data_tx,
-            outgoign_data_rx,
-        }
-    }
-
-    pub async fn host(&mut self, port: u16) -> Result<()> {
+        outgoing_data_rx: UnboundedReceiver<SocketData>,
+        port: u16,
+    ) -> Result<Self> {
         let bind_addr = SocketAddr::from(([0, 0, 0, 0], port));
 
         // Bind with std first
@@ -51,13 +44,18 @@ impl SocketManager {
         let local_addr = socket.local_addr()?;
         println!("Hosting on {}", local_addr);
 
-        self.socket = Some(socket);
-        self.host_addr = None;
-
-        Ok(())
+        Ok(Self {
+            socket: Arc::new(socket),
+            incoming_data_tx,
+            outgoing_data_rx,
+        })
     }
 
-    pub async fn join(&mut self, port: u16) -> Result<()> {
+    pub async fn join(
+        incoming_data_tx: UnboundedSender<SocketData>,
+        outgoing_data_rx: UnboundedReceiver<SocketData>,
+        port: u16,
+    ) -> Result<Self> {
         // Bind to any available local port
         let bind_addr = SocketAddr::from(([0, 0, 0, 0], 0));
         let std_socket = std::net::UdpSocket::bind(bind_addr)?;
@@ -71,91 +69,59 @@ impl SocketManager {
 
         println!("Joining host at {}", host_addr);
 
-        self.socket = Some(socket);
-        self.host_addr = Some(host_addr);
-
-        Ok(())
+        Ok(Self {
+            socket: Arc::new(socket),
+            incoming_data_tx,
+            outgoing_data_rx,
+        })
     }
 
-    //listens, and sends to bytes to network manager
-    pub async fn poll_socket(&mut self, mut shutdown_rx: watch::Receiver<bool>) -> Result<()> {
+    pub async fn run(&mut self, shutdown_rx: watch::Receiver<bool>) {
         let mut buf = [0u8; 1024];
-
-        // Take the socket out of the Option temporarily to avoid unwraps
-        let socket = self.socket.take().expect("Socket not initialized");
-
         loop {
-            tokio::select! {
-                // Shutdown signal triggered
-                _ = shutdown_rx.changed() => {
-                    if *shutdown_rx.borrow() {
-                        println!("Socket shutting down");
-                        break;
-                    }
+            // Check shutdown first
+            if *shutdown_rx.borrow() {
+                break;
+            }
+
+            println!("tick");
+
+            // --- Poll the socket ---
+            match tokio::time::timeout(Duration::from_millis(50), self.socket.recv_from(&mut buf))
+                .await
+            {
+                Ok(Ok((len, addr))) => {
+                    let bytes = buf[..len].to_vec();
+                    // Send the incoming data to the handler
+                    let _ = self.incoming_data_tx.send((addr, bytes));
                 }
-
-                // Try to receive from the socket
-                result = socket.recv_from(&mut buf) => {
-                    match result {
-                        Ok((len, addr)) => {
-                            let bytes = buf[..len].to_vec();
-                            let _ = self.incoming_data_tx.send((addr, bytes));
-                            tokio::task::yield_now().await;
-                        }
-                        Err(e) => {
-                            eprintln!("Socket recv error: {e}");
-                            // Optionally break or continue depending on error
-                        }
-                    }
+                Ok(Err(e)) => {
+                    eprintln!("Socket error: {e}");
+                }
+                Err(_) => {
+                    // Timeout, no data received, continue
                 }
             }
-        }
 
-        println!("Socket poll loop exited");
+            println!("tick2");
 
-        // Put the socket back into self so it can be reused/dropped
-        self.socket = Some(socket);
+            // Optional: small sleep to avoid hot spin
+            tokio::time::sleep(Duration::from_millis(1)).await;
 
-        Ok(())
-    }
-
-    //checks for any data on socket
-    fn try_recv_from(&mut self, buf: &mut [u8]) -> Option<(usize, SocketAddr)> {
-        let socket = match self.socket.as_mut() {
-            Some(s) => s,
-            None => return None, // socket doesn't exist yet, silently skip
-        };
-
-        match socket.try_recv_from(buf) {
-            Ok((len, addr)) => Some((len, addr)),
-            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                // no packet available, not an error
-                None
+            // --- Handle outgoing messages ---
+            while let Ok(msg) = self.outgoing_data_rx.try_recv() {
+                self.send_data(msg).await;
             }
-            Err(e) => {
-                eprintln!("Socket error: {e}");
-                None
-            }
+
+            // Optional: small sleep to avoid hot spin
+            tokio::time::sleep(Duration::from_millis(1)).await;
         }
     }
-    pub async fn send_to_host(&self, request: ClientRequest) {
-        let socket = match self.socket.as_ref() {
-            Some(s) => s,
-            None => return, // socket doesn't exist yet, silently skip
-        };
 
-        if let Some(host_addr) = self.host_addr {
-            let bytes = match serde_json::to_vec(&request) {
-                Ok(b) => b,
-                Err(e) => {
-                    eprintln!("Failed to serialize ClientRequest: {e}");
-                    return;
-                }
-            };
-
-            if let Err(e) = socket.send_to(&bytes, host_addr).await {
-                eprintln!("Failed to send to host {host_addr}: {e}");
-            }
+    pub async fn send_data(&self, data: SocketData) {
+        println!("Sending Data");
+        if let Err(e) = self.socket.send_to(&data.1, data.0).await {
+            eprintln!("Failed to send to host {}: {e}", data.0);
         }
     }
 }

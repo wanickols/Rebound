@@ -86,7 +86,11 @@ impl NetworkClient {
                 if client_id.is_none() {
                     eprintln!("Client is handling initial join request");
                 }
+                println!("Client Id Added");
                 self.id = client_id;
+                if let Err(err) = self.app.emit("joined", client_id) {
+                    eprintln!("Failed to to send join to client: {}", err);
+                }
             }
         }
     }

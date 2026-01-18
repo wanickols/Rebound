@@ -24,6 +24,7 @@ pub struct StartupManager {
     nh_listener: Option<JoinHandle<()>>,
     gm: Arc<Mutex<GameManager>>,
     sm_listener: Option<JoinHandle<()>>,
+    sm_poller: Option<JoinHandle<()>>,
     client_listener: Option<JoinHandle<()>>,
     app: AppHandle,
     shutdown_tx: Option<tokio::sync::watch::Sender<bool>>,
@@ -47,6 +48,7 @@ impl StartupManager {
             nh_listener: None,
             gm,
             sm_listener: None,
+            sm_poller: None,
             client_listener: None,
             app,
             shutdown_tx: None,
@@ -125,6 +127,10 @@ impl StartupManager {
 
         // Abort socket manager listener
         if let Some(handle) = self.sm_listener.take() {
+            handle.abort();
+        }
+
+        if let Some(handle) = self.sm_poller.take() {
             handle.abort();
         }
         println!("All listeners aborted.");
@@ -227,34 +233,41 @@ impl StartupManager {
         outgoing_socket_data_rx: UnboundedReceiver<SocketData>,
         shutdown_rx: tokio::sync::watch::Receiver<bool>,
     ) {
-        let mut sm = SocketManager::new(
-            senders.incoming_socket_data_tx.clone(),
-            outgoing_socket_data_rx,
-        );
+        //todo add polling for socket manager
+
+        // Keep the handle in self
+        let incoming_tx = senders.incoming_socket_data_tx.clone();
 
         if is_host {
-            // Spawn the hosting task
             let sm_handle: JoinHandle<()> = tokio::spawn(async move {
-                if let Err(e) = sm.host(port).await {
-                    eprintln!("Failed to host socket: {e}");
-                    return;
-                }
+                let mut sm =
+                    match SocketManager::host(incoming_tx.clone(), outgoing_socket_data_rx, port)
+                        .await
+                    {
+                        Ok(sm) => sm,
+                        Err(e) => {
+                            eprintln!("Failed to host socket: {e}");
+                            return;
+                        }
+                    };
 
-                let _ = sm.poll_socket(shutdown_rx).await;
+                sm.run(shutdown_rx).await;
             });
-
-            //todo add polling for socket manager
-
-            // Keep the handle in self
             self.sm_listener = Some(sm_handle);
         } else {
             let sm_handle: JoinHandle<()> = tokio::spawn(async move {
-                if let Err(e) = sm.join(port).await {
-                    eprintln!("Failed to host socket: {e}");
-                    return;
-                }
+                let mut sm =
+                    match SocketManager::join(incoming_tx.clone(), outgoing_socket_data_rx, port)
+                        .await
+                    {
+                        Ok(sm) => sm,
+                        Err(e) => {
+                            eprintln!("Failed to host socket: {e}");
+                            return;
+                        }
+                    };
 
-                let _ = sm.poll_socket(shutdown_rx).await;
+                sm.run(shutdown_rx).await;
             });
 
             //todo add polling for socket manager
