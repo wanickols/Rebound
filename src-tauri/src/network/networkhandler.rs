@@ -56,6 +56,7 @@ impl NetworkHandler {
     }
 
     async fn handle_socket_data(&mut self, data: SocketData) {
+        println!("Handling");
         let (peer_addr, bytes) = data;
 
         //deserialize
@@ -173,7 +174,6 @@ impl NetworkHandler {
 
         for addr in self.clients_by_id.values() {
             self.send_over_network(*addr, bytes.clone());
-
         }
         self.send_to_host_client(event);
     }

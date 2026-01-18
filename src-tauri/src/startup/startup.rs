@@ -240,34 +240,30 @@ impl StartupManager {
 
         if is_host {
             let sm_handle: JoinHandle<()> = tokio::spawn(async move {
-                let mut sm =
-                    match SocketManager::host(incoming_tx.clone(), outgoing_socket_data_rx, port)
-                        .await
-                    {
-                        Ok(sm) => sm,
-                        Err(e) => {
-                            eprintln!("Failed to host socket: {e}");
-                            return;
-                        }
-                    };
+                let mut sm = match SocketManager::host(port).await {
+                    Ok(sm) => sm,
+                    Err(e) => {
+                        eprintln!("Failed to host socket: {e}");
+                        return;
+                    }
+                };
 
-                sm.run(shutdown_rx).await;
+                sm.run(incoming_tx.clone(), outgoing_socket_data_rx, shutdown_rx)
+                    .await;
             });
             self.sm_listener = Some(sm_handle);
         } else {
             let sm_handle: JoinHandle<()> = tokio::spawn(async move {
-                let mut sm =
-                    match SocketManager::join(incoming_tx.clone(), outgoing_socket_data_rx, port)
-                        .await
-                    {
-                        Ok(sm) => sm,
-                        Err(e) => {
-                            eprintln!("Failed to host socket: {e}");
-                            return;
-                        }
-                    };
+                let mut sm = match SocketManager::join(port).await {
+                    Ok(sm) => sm,
+                    Err(e) => {
+                        eprintln!("Failed to host socket: {e}");
+                        return;
+                    }
+                };
 
-                sm.run(shutdown_rx).await;
+                sm.run(incoming_tx.clone(), outgoing_socket_data_rx, shutdown_rx)
+                    .await;
             });
 
             //todo add polling for socket manager

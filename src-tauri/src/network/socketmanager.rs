@@ -15,8 +15,6 @@ use crate::network::{
 //Consider using state enum here to make sure bad socketmanager's can't be made :D
 pub struct SocketManager {
     socket: Arc<UdpSocket>,
-    incoming_data_tx: UnboundedSender<SocketData>,
-    outgoing_data_rx: UnboundedReceiver<SocketData>,
 }
 
 pub type SocketData = (SocketAddr, Vec<u8>);
@@ -28,11 +26,7 @@ impl Drop for SocketManager {
 }
 
 impl SocketManager {
-    pub async fn host(
-        incoming_data_tx: UnboundedSender<SocketData>,
-        outgoing_data_rx: UnboundedReceiver<SocketData>,
-        port: u16,
-    ) -> Result<Self> {
+    pub async fn host(port: u16) -> Result<Self> {
         let bind_addr = SocketAddr::from(([0, 0, 0, 0], port));
 
         // Bind with std first
@@ -46,16 +40,10 @@ impl SocketManager {
 
         Ok(Self {
             socket: Arc::new(socket),
-            incoming_data_tx,
-            outgoing_data_rx,
         })
     }
 
-    pub async fn join(
-        incoming_data_tx: UnboundedSender<SocketData>,
-        outgoing_data_rx: UnboundedReceiver<SocketData>,
-        port: u16,
-    ) -> Result<Self> {
+    pub async fn join(port: u16) -> Result<Self> {
         // Bind to any available local port
         let bind_addr = SocketAddr::from(([0, 0, 0, 0], 0));
         let std_socket = std::net::UdpSocket::bind(bind_addr)?;
@@ -71,49 +59,50 @@ impl SocketManager {
 
         Ok(Self {
             socket: Arc::new(socket),
-            incoming_data_tx,
-            outgoing_data_rx,
         })
     }
 
-    pub async fn run(&mut self, shutdown_rx: watch::Receiver<bool>) {
-        let mut buf = [0u8; 1024];
+    pub async fn run(
+        &mut self,
+        incoming_data_tx: UnboundedSender<SocketData>,
+        mut outgoing_data_rx: UnboundedReceiver<SocketData>,
+        shutdown_rx: watch::Receiver<bool>,
+    ) {
+        // Spawn dedicated receive task
+        let recv_task = {
+            let socket = self.socket.clone();
+
+            tokio::spawn(async move {
+                let mut buf = [0u8; 1024];
+                loop {
+                    match socket.recv_from(&mut buf).await {
+                        Ok((len, addr)) => {
+                            let bytes = buf[..len].to_vec();
+                            println!("recving");
+                            if let Err(e) = incoming_data_tx.send((addr, bytes)) {
+                                eprintln!(
+                                    "incoming_data_tx.send FAILED — receiver dropped. addr={addr}, err={e:?}"
+                                );
+                            }
+                            tokio::task::yield_now().await; //never remove this line. thank you :)
+                        }
+                        Err(e) => eprintln!("recv error: {e}"),
+                    }
+                }
+            })
+        };
+
+        // Main loop
         loop {
-            // Check shutdown first
             if *shutdown_rx.borrow() {
+                recv_task.abort();
                 break;
             }
-
-            println!("tick");
-
-            // --- Poll the socket ---
-            match tokio::time::timeout(Duration::from_millis(50), self.socket.recv_from(&mut buf))
-                .await
-            {
-                Ok(Ok((len, addr))) => {
-                    let bytes = buf[..len].to_vec();
-                    // Send the incoming data to the handler
-                    let _ = self.incoming_data_tx.send((addr, bytes));
-                }
-                Ok(Err(e)) => {
-                    eprintln!("Socket error: {e}");
-                }
-                Err(_) => {
-                    // Timeout, no data received, continue
-                }
+            // Drain outgoing messages
+            while let Ok((addr, bytes)) = outgoing_data_rx.try_recv() {
+                let _ = self.send_data((addr, bytes)).await;
             }
 
-            println!("tick2");
-
-            // Optional: small sleep to avoid hot spin
-            tokio::time::sleep(Duration::from_millis(1)).await;
-
-            // --- Handle outgoing messages ---
-            while let Ok(msg) = self.outgoing_data_rx.try_recv() {
-                self.send_data(msg).await;
-            }
-
-            // Optional: small sleep to avoid hot spin
             tokio::time::sleep(Duration::from_millis(1)).await;
         }
     }
