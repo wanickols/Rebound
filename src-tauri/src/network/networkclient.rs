@@ -88,7 +88,7 @@ impl NetworkClient {
                 }
                 println!("Client Id Added");
                 self.id = client_id;
-                if let Err(err) = self.app.emit("joined", client_id) {
+                if let Err(err) = self.app.emit("joined", client_id.unwrap()) {
                     eprintln!("Failed to to send join to client: {}", err);
                 }
             }

@@ -1,15 +1,18 @@
-use std::sync::{mpsc::Receiver, Arc, Mutex};
+use std::{
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 
-use tauri::{App, AppHandle, Manager};
+use tauri::{AppHandle, Manager};
 use tokio::{
-    sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
+    sync::mpsc::{UnboundedReceiver, UnboundedSender},
     task::JoinHandle,
 };
 
 use crate::{
     game::gamemanager::GameManager,
     network::{
-        channels::{init_channels, HostChannelReceivers, HostChannelSenders},
+        channels::{init_channels, HostChannelSenders},
         clientid::ClientId,
         clientnetworkhandler::ClientNetworkHandler,
         clientrequest::{ClientMessage, ClientRequest},
@@ -21,11 +24,8 @@ use crate::{
 };
 
 pub struct StartupManager {
-    nh_listener: Option<JoinHandle<()>>,
+    tasks: Vec<JoinHandle<()>>,
     gm: Arc<Mutex<GameManager>>,
-    sm_listener: Option<JoinHandle<()>>,
-    sm_poller: Option<JoinHandle<()>>,
-    client_listener: Option<JoinHandle<()>>,
     app: AppHandle,
     shutdown_tx: Option<tokio::sync::watch::Sender<bool>>,
 }
@@ -45,18 +45,15 @@ impl StartupManager {
         app.manage(managed_senders.clone());
 
         Self {
-            nh_listener: None,
+            tasks: Vec::new(),
             gm,
-            sm_listener: None,
-            sm_poller: None,
-            client_listener: None,
             app,
             shutdown_tx: None,
         }
     }
 
-    pub fn init_host(&mut self, port: u16) {
-        self.close_listeners();
+    pub async fn init_host(&mut self, port: u16) {
+        self.close_tasks().await;
 
         let (senders, receivers) = init_channels();
 
@@ -89,8 +86,8 @@ impl StartupManager {
         *managed_senders.inner.lock().unwrap() = senders;
     }
 
-    pub fn init_join(&mut self, port: u16) {
-        self.close_listeners();
+    pub async fn init_join(&mut self, port: u16) {
+        self.close_tasks().await;
         let (senders, receivers) = init_channels();
 
         self.init_client(
@@ -114,32 +111,22 @@ impl StartupManager {
         );
     }
 
-    pub fn close_listeners(&mut self) {
-        // Abort client listener
-        if let Some(handle) = self.client_listener.take() {
-            handle.abort();
-        }
-
-        // Abort network manager listener
-        if let Some(handle) = self.nh_listener.take() {
-            handle.abort();
-        }
-
-        // Abort socket manager listener
-        if let Some(handle) = self.sm_listener.take() {
-            handle.abort();
-        }
-
-        if let Some(handle) = self.sm_poller.take() {
-            handle.abort();
-        }
-        println!("All listeners aborted.");
+    pub async fn close_tasks(&mut self) {
         if let Some(shutdown_tx) = self.shutdown_tx.take() {
             // shutdown_tx is now owned, self.shutdown_tx is None
-            let _ = shutdown_tx.send(true); // ignore error if receivers dropped
+            let _ = shutdown_tx.send(true);
+            println!("Shutdown Called.");
         }
 
-        println!("Shutdown Called.");
+        tokio::time::sleep(Duration::from_millis(10)).await;
+
+        //abort open tasks and clear list
+        for handle in self.tasks.drain(..) {
+            handle.abort();
+        }
+
+        println!("All listeners aborted.");
+        self.shutdown_tx = None;
     }
 
     //Helpers:
@@ -172,7 +159,7 @@ impl StartupManager {
             client.start_listening().await;
         });
 
-        self.client_listener = Some(client_handle);
+        self.tasks.push(client_handle);
     }
 
     fn init_network(
@@ -192,15 +179,12 @@ impl StartupManager {
             senders.outgoing_socket_data_tx.clone(),
         );
 
-        println!("network handler created");
-
-        // Spawn its listener
+        //Network Listening
         let nm_handle: JoinHandle<()> = tokio::spawn(async move {
             nm.start_listening().await;
         });
 
-        // Keep the handle in self
-        self.nh_listener = Some(nm_handle);
+        self.tasks.push(nm_handle);
     }
 
     fn init_client_network(
@@ -216,15 +200,15 @@ impl StartupManager {
             senders.outgoing_socket_data_tx.clone(),
         );
 
-        // Spawn its listener
+        //Client Network Listening
         let nm_handle: JoinHandle<()> = tokio::spawn(async move {
             cnh.start_listening().await;
         });
 
-        // Keep the handle in self
-        self.nh_listener = Some(nm_handle);
+        self.tasks.push(nm_handle);
     }
 
+    //Todo clean this up with an enum so one function can do this easily
     fn init_socket(
         &mut self,
         is_host: bool,
@@ -233,13 +217,12 @@ impl StartupManager {
         outgoing_socket_data_rx: UnboundedReceiver<SocketData>,
         shutdown_rx: tokio::sync::watch::Receiver<bool>,
     ) {
-        //todo add polling for socket manager
-
-        // Keep the handle in self
+        // Get incoming clone
         let incoming_tx = senders.incoming_socket_data_tx.clone();
-
+        let sm_handle: JoinHandle<()>;
         if is_host {
-            let sm_handle: JoinHandle<()> = tokio::spawn(async move {
+            sm_handle = tokio::spawn(async move {
+                //Host Socket
                 let mut sm = match SocketManager::host(port).await {
                     Ok(sm) => sm,
                     Err(e) => {
@@ -248,12 +231,12 @@ impl StartupManager {
                     }
                 };
 
+                //Start Polling
                 sm.run(incoming_tx.clone(), outgoing_socket_data_rx, shutdown_rx)
                     .await;
             });
-            self.sm_listener = Some(sm_handle);
         } else {
-            let sm_handle: JoinHandle<()> = tokio::spawn(async move {
+            sm_handle = tokio::spawn(async move {
                 let mut sm = match SocketManager::join(port).await {
                     Ok(sm) => sm,
                     Err(e) => {
@@ -265,11 +248,8 @@ impl StartupManager {
                 sm.run(incoming_tx.clone(), outgoing_socket_data_rx, shutdown_rx)
                     .await;
             });
-
-            //todo add polling for socket manager
-
-            // Keep the handle in self
-            self.sm_listener = Some(sm_handle);
         }
+
+        self.tasks.push(sm_handle);
     }
 }

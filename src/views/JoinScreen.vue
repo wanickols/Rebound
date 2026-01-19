@@ -40,11 +40,19 @@
 import LoadingCounter from "@/components/LoadingCounter.vue";
 import router from "@/router";
 import { invoke } from "@tauri-apps/api/core";
-import { ref } from "vue";
+import { listen } from "@tauri-apps/api/event";
+import { onMounted, ref } from "vue";
 
 const port = ref<number | null>(null);
 const joined = ref(false);
 const title = ref("Join Lobby");
+
+onMounted(async () => {
+  await listen<Number>("joined", () => {
+    console.log("Pushin");
+    router.push("/game");
+  });
+});
 
 function joinLobby() {
   joined.value = true;

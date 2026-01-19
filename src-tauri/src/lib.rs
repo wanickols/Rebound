@@ -5,14 +5,14 @@ mod startup;
 use crate::game::gamemanager::GameManager;
 use crate::game::gamepayload::GamePayload;
 
-use crate::network::clientrequest::{self, ClientRequest};
-use crate::network::networkclient::NetworkClient;
+use crate::network::clientrequest::ClientRequest;
 use crate::network::serverevent::ServerEvent;
 use crate::startup::startup::{ManagedSenders, StartupManager};
 
 use std::sync::{Arc, Mutex};
-use tauri::{AppHandle, Manager};
-use tokio::sync::mpsc::UnboundedSender;
+use tauri::Manager;
+
+type SharedManager = Arc<tokio::sync::Mutex<StartupManager>>;
 
 #[tauri::command]
 fn client_request(managed: tauri::State<ManagedSenders>, request: ClientRequest) {
@@ -38,38 +38,19 @@ fn set_game_settings(
 }
 
 #[tauri::command]
-fn host_game(port: u16, startup: tauri::State<Arc<Mutex<StartupManager>>>) {
-    // Attempt to lock the StartupManager
-    let mut start_lock = match startup.lock() {
-        Ok(lock) => lock,
-        Err(poisoned) => {
-            // Recover from a poisoned mutex by taking the inner value
-            eprintln!("Warning: StartupManager mutex was poisoned. Recovering...");
-            poisoned.into_inner()
-        }
-    };
-
-    // Use default port 8080 if 0 is passed
+async fn host_game<'a>(port: u16, startup: tauri::State<'a, SharedManager>) -> Result<(), ()> {
+    let mut start_lock = startup.lock().await;
     let port = if port == 0 { 8080 } else { port };
-
-    // Initialize hosting
-    start_lock.init_host(port);
+    start_lock.init_host(port).await;
+    Ok(())
 }
 
 #[tauri::command]
-fn join_game(port: u16, startup: tauri::State<Arc<Mutex<StartupManager>>>) {
-    let mut start_lock = match startup.lock() {
-        Ok(lock) => lock,
-        Err(poisoned) => {
-            // Recover from a poisoned mutex by taking the inner value
-            eprintln!("Warning: StartupManager mutex was poisoned. Recovering...");
-            poisoned.into_inner()
-        }
-    };
-
+async fn join_game<'a>(port: u16, startup: tauri::State<'a, SharedManager>) -> Result<(), ()> {
+    let mut start_lock = startup.lock().await;
     let port = if port == 0 { 8080 } else { port };
-
-    start_lock.init_join(port);
+    start_lock.init_join(port).await;
+    Ok(())
 }
 
 #[tauri::command]
@@ -103,7 +84,11 @@ pub async fn run() -> std::io::Result<()> {
 
             let gm_for_loop = Arc::clone(&gm);
             //startup
-            let startup = Arc::new(Mutex::new(StartupManager::new(gm, app.handle().clone())));
+            let startup: SharedManager = Arc::new(tokio::sync::Mutex::new(StartupManager::new(
+                gm,
+                app.handle().clone(),
+            )));
+
             app.manage(startup.clone());
 
             //game loop

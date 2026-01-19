@@ -22,6 +22,9 @@ pub type SocketData = (SocketAddr, Vec<u8>);
 impl Drop for SocketManager {
     fn drop(&mut self) {
         println!("Closing socket");
+        Arc::try_unwrap(self.socket.clone())
+            .ok()
+            .map(|sock| drop(sock));
     }
 }
 
@@ -31,6 +34,7 @@ impl SocketManager {
 
         // Bind with std first
         let std_socket = std::net::UdpSocket::bind(bind_addr)?;
+        std_socket.set_nonblocking(true)?;
 
         // Convert to Tokio socket
         let socket = UdpSocket::from_std(std_socket)?;
@@ -47,6 +51,7 @@ impl SocketManager {
         // Bind to any available local port
         let bind_addr = SocketAddr::from(([0, 0, 0, 0], 0));
         let std_socket = std::net::UdpSocket::bind(bind_addr)?;
+        std_socket.set_nonblocking(true)?;
 
         let socket = UdpSocket::from_std(std_socket)?;
 
@@ -68,47 +73,42 @@ impl SocketManager {
         mut outgoing_data_rx: UnboundedReceiver<SocketData>,
         shutdown_rx: watch::Receiver<bool>,
     ) {
-        // Spawn dedicated receive task
-        let recv_task = {
-            let socket = self.socket.clone();
+        let socket = self.socket.clone();
 
-            tokio::spawn(async move {
-                let mut buf = [0u8; 1024];
-                loop {
-                    match socket.recv_from(&mut buf).await {
-                        Ok((len, addr)) => {
-                            let bytes = buf[..len].to_vec();
-                            println!("recving");
-                            if let Err(e) = incoming_data_tx.send((addr, bytes)) {
-                                eprintln!(
-                                    "incoming_data_tx.send FAILED — receiver dropped. addr={addr}, err={e:?}"
-                                );
-                            }
-                            tokio::task::yield_now().await; //never remove this line. thank you :)
-                        }
-                        Err(e) => eprintln!("recv error: {e}"),
-                    }
-                }
-            })
-        };
+        let mut buf = [0u8; 2048];
 
-        // Main loop
         loop {
+            // --- Shutdown check ---
             if *shutdown_rx.borrow() {
-                recv_task.abort();
+                println!("Main loop shutting down");
                 break;
             }
-            // Drain outgoing messages
-            while let Ok((addr, bytes)) = outgoing_data_rx.try_recv() {
-                let _ = self.send_data((addr, bytes)).await;
+
+            // --- Receive with timeout ---
+            match tokio::time::timeout(Duration::from_millis(50), socket.recv_from(&mut buf)).await
+            {
+                Ok(Ok((len, addr))) => {
+                    let bytes = buf[..len].to_vec();
+                    if let Err(e) = incoming_data_tx.send((addr, bytes)) {
+                        eprintln!(
+                        "incoming_data_tx.send FAILED — receiver dropped. addr={addr}, err={e:?}"
+                    );
+                    }
+                }
+                Ok(Err(e)) => eprintln!("recv_from error: {e}"),
+                Err(_) => {
+                    // Timeout — no data received, that's fine
+                }
             }
 
-            tokio::time::sleep(Duration::from_millis(1)).await;
+            // --- Send outgoing messages ---
+            while let Ok((addr, bytes)) = outgoing_data_rx.try_recv() {
+                self.send_data((addr, bytes)).await;
+            }
         }
     }
 
     pub async fn send_data(&self, data: SocketData) {
-        println!("Sending Data");
         if let Err(e) = self.socket.send_to(&data.1, data.0).await {
             eprintln!("Failed to send to host {}: {e}", data.0);
         }
