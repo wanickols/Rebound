@@ -20,6 +20,7 @@ use crate::{
         networkhandler::NetworkHandler,
         serverevent::ServerEvent,
         socketmanager::{SocketData, SocketManager},
+        ttlmanager::TTLManager,
     },
 };
 
@@ -69,8 +70,11 @@ impl StartupManager {
             &senders,
             receivers.snapshot_rx,
             receivers.client_message_rx,
+            receivers.client_dead_rx,
             receivers.incoming_socket_data_rx,
         );
+
+        self.init_ttl_manager(&senders, receivers.client_tick_rx);
 
         self.init_socket(
             true,
@@ -167,6 +171,7 @@ impl StartupManager {
         senders: &HostChannelSenders,
         snapshot_rx: UnboundedReceiver<ServerEvent>,
         client_message_rx: UnboundedReceiver<ClientMessage>,
+        client_dead_rx: UnboundedReceiver<ClientId>,
         incoming_socket_data: UnboundedReceiver<SocketData>,
     ) {
         // Create the network manager
@@ -175,6 +180,8 @@ impl StartupManager {
             client_message_rx,       // move receiver
             snapshot_rx,
             senders.client_event_tx.clone(),
+            senders.client_tick_tx.clone(),
+            client_dead_rx,
             incoming_socket_data,
             senders.outgoing_socket_data_tx.clone(),
         );
@@ -206,6 +213,20 @@ impl StartupManager {
         });
 
         self.tasks.push(nm_handle);
+    }
+
+    fn init_ttl_manager(
+        &mut self,
+        senders: &HostChannelSenders,
+        client_tick_rx: UnboundedReceiver<ClientId>,
+    ) {
+        let ttl = TTLManager::new(client_tick_rx, senders.client_dead_tx.clone());
+
+        let ttl_handle = tokio::spawn(async move {
+            ttl.run().await;
+        });
+
+        self.tasks.push(ttl_handle);
     }
 
     //Todo clean this up with an enum so one function can do this easily

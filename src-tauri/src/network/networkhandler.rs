@@ -1,12 +1,9 @@
 use std::{collections::HashMap, net::SocketAddr};
 
-use tokio::sync::{
-    futures,
-    mpsc::{UnboundedReceiver, UnboundedSender},
-};
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
 use crate::network::{
-    clientid::ClientId,
+    clientid::{self, ClientId},
     clientrequest::{ClientMessage, ClientRequest},
     serverevent::ServerEvent,
     socketmanager::SocketData,
@@ -19,6 +16,12 @@ pub struct NetworkHandler {
     client_message: UnboundedReceiver<ClientMessage>,
     server_events: UnboundedReceiver<ServerEvent>,
     client_events: UnboundedSender<ServerEvent>,
+
+    //TTL
+    pub reset_client_tx: UnboundedSender<ClientId>,
+    pub client_died_rx: UnboundedReceiver<ClientId>,
+
+    //Socket
     incoming_socket_data: UnboundedReceiver<SocketData>,
     outgoing_socket_data: UnboundedSender<SocketData>,
 }
@@ -29,6 +32,8 @@ impl NetworkHandler {
         client_message: UnboundedReceiver<ClientMessage>,
         server_events: UnboundedReceiver<ServerEvent>,
         client_events: UnboundedSender<ServerEvent>,
+        reset_client_tx: UnboundedSender<ClientId>,
+        client_died_rx: UnboundedReceiver<ClientId>,
         incoming_socket_data: UnboundedReceiver<SocketData>,
         outgoing_socket_data: UnboundedSender<SocketData>,
     ) -> Self {
@@ -39,6 +44,8 @@ impl NetworkHandler {
             client_message,
             server_events,
             client_events,
+            client_died_rx,
+            reset_client_tx,
             incoming_socket_data,
             outgoing_socket_data,
         }
@@ -50,6 +57,7 @@ impl NetworkHandler {
                 Some(dta) = self.incoming_socket_data.recv() => self.handle_socket_data(dta).await,
                 Some(req) = self.client_message.recv() => self.handle_client_request(req).await,
                 Some(evt) = self.server_events.recv() => self.handle_server_event(evt).await,
+                Some(clt) = self.client_died_rx.recv() => self.handle_client_died(clt).await,
                 else => break, // all channels closed, shutdown
             }
         }
@@ -77,6 +85,14 @@ impl NetworkHandler {
         match request {
             ClientRequest::Joined => {
                 self.handle_client_join(peer_addr);
+                return;
+            }
+            ClientRequest::Idle => {
+                let clientid = self.clients_by_addr.get(&data.0);
+                if clientid.is_none() {
+                    return;
+                }
+                self.reset_client_tx.send(*clientid.unwrap());
                 return;
             }
             _ => {}
@@ -109,6 +125,16 @@ impl NetworkHandler {
 
         let bytes = serde_json::to_vec(&event).unwrap();
         self.send_over_network(peer_addr, bytes);
+    }
+
+    async fn handle_client_died(&mut self, id: ClientId) {
+        let addr = self.clients_by_id.get(&id).cloned();
+        if addr.is_none() {
+            println!("Tried to delete client that doesn't exist");
+            return;
+        }
+        self.clients_by_id.remove(&id);
+        self.clients_by_addr.remove(&addr.unwrap());
     }
 
     fn send_blank_join(&self, addr: SocketAddr) {

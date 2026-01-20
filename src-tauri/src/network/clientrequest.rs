@@ -8,6 +8,7 @@ use crate::{
 pub enum ClientRequest {
     Add,
     Joined,
+    Idle,
     Remove {
         id: EntityId,
     },
