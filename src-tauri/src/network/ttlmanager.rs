@@ -34,7 +34,7 @@ impl TTLManager {
 
                 // Tick every second
                 _ = sleep(Duration::from_secs(1)) => {
-                    self.tick();
+                    self.tick_death();
 
                     // Optional: check for clients that "died"
                     let mut dead_clients = vec![];
@@ -53,7 +53,7 @@ impl TTLManager {
         }
     }
 
-    fn tick(&mut self) {
+    fn tick_death(&mut self) {
         for (clientid, ttl) in self.clients_by_id.iter_mut() {
             *ttl += 1;
         }

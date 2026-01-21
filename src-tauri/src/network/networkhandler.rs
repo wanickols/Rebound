@@ -3,7 +3,7 @@ use std::{collections::HashMap, net::SocketAddr};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
 use crate::network::{
-    clientid::{self, ClientId},
+    clientid::ClientId,
     clientrequest::{ClientMessage, ClientRequest},
     serverevent::ServerEvent,
     socketmanager::SocketData,

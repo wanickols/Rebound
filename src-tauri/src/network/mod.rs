@@ -1,8 +1,8 @@
-mod NetworkHandler;
 pub mod channels;
 pub mod clientid;
 pub mod clientnetworkhandler;
 pub mod clientrequest;
+pub mod heartbeat;
 pub mod networkclient;
 pub mod networkhandler;
 pub mod networkinfo;

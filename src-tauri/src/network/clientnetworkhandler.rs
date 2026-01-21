@@ -1,7 +1,10 @@
-use std::{collections::btree_map, net::SocketAddr};
+use std::{collections::btree_map, net::SocketAddr, time::Duration};
 
 use tauri::http::Request;
-use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
+use tokio::{
+    sync::mpsc::{UnboundedReceiver, UnboundedSender},
+    time,
+};
 
 use crate::network::{
     clientid::{self, ClientId},
@@ -42,10 +45,18 @@ impl ClientNetworkHandler {
     }
 
     pub async fn start_listening(&mut self) {
+        let mut heartbeat = time::interval(Duration::from_secs(5)); // ping every 5s
         loop {
             tokio::select! {
-                Some(dta) = self.incoming_socket_data.recv() => self.handle_socket_data(dta).await,
-                Some(req) = self.incoming_client_request.recv() => self.handle_client_request(req).await,
+                Some(dta) = self.incoming_socket_data.recv() => {
+                    self.handle_socket_data(dta).await;
+                }
+                Some(req) = self.incoming_client_request.recv() => {
+                    self.handle_client_request(req).await;
+                }
+                _ = heartbeat.tick() => {
+                    self.send_request(ClientRequest::Idle).await;
+                }
                 else => break, // all channels closed, shutdown
             }
         }
@@ -90,7 +101,7 @@ impl ClientNetworkHandler {
                 // First contact: establish host
                 if self.host_addr.is_none() {
                     self.host_addr = Some(peer_addr);
-                    self.send_join_reqeust().await;
+                    self.send_request(ClientRequest::Joined).await;
 
                     return;
                 }
@@ -107,9 +118,8 @@ impl ClientNetworkHandler {
         }
     }
 
-    async fn send_join_reqeust(&self) {
-        let req = ClientRequest::Joined;
-        let msg = ClientMessage::new(ClientId::new(), req);
+    async fn send_request(&self, request: ClientRequest) {
+        let msg = ClientMessage::new(ClientId::new(), request);
         self.handle_client_request(msg).await;
     }
 
