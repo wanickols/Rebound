@@ -6,7 +6,13 @@ import GameSetup from "../views/GameSetup.vue";
 
 const routes = [
   { path: "/", component: TitleScreen },
-  { path: "/game", component: GameScreen },
+  {
+    path: "/game/:role",
+    name: "game",
+    component: GameScreen,
+    props: true,
+  },
+
   { path: "/gameSetup", component: GameSetup },
   { path: "/join", component: JoinScreen },
 ];

@@ -16,7 +16,10 @@ const onPlay = async () => {
   });
   console.log(result);
 
-  router.push("/game");
+  router.push({
+    name: "game",
+    params: { role: "host" },
+  });
 };
 
 const goBack = () => {

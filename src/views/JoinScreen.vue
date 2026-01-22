@@ -50,7 +50,10 @@ const title = ref("Join Lobby");
 onMounted(async () => {
   await listen<Number>("joined", () => {
     console.log("Pushin");
-    router.push("/game");
+    router.push({
+      name: "game",
+      params: { role: "client" },
+    });
   });
 });
 
