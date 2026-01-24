@@ -23,6 +23,14 @@ pub enum Kind {
     Goal,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AnimationState {
+    Idle,
+    Moving,
+    Dashing,
+    Shooting,
+}
+
 #[derive(Serialize, Deserialize, Clone, Copy, Debug)]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum Shape {
