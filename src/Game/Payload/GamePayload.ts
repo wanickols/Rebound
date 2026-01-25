@@ -6,7 +6,7 @@ export class GamePayload {
   constructor(
     public states: State[],
     public score_manager: ScoreManager,
-    public phase: GamePhase
+    public phase: GamePhase,
   ) {}
 
   static from(obj: any): GamePayload {
@@ -17,11 +17,12 @@ export class GamePayload {
         s.vx,
         s.vy,
         s.shape,
+        s.animation_state,
         s.angle,
         s.is_static,
         s.kind,
         s.player_id,
-        s.team_id
+        s.team_id,
       );
     });
 

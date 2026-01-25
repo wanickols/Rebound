@@ -1,46 +1,20 @@
+pub mod entityid;
+pub mod enums;
 pub mod physicsstate;
 pub mod renderstate;
 
-#[path = "entityid.rs"]
-pub mod entityid;
-
-use serde::{Deserialize, Serialize};
-
-use crate::game::eventqueue::{EventQueue, GameEvent};
-use crate::game::input::inputframe::Vec2;
-use crate::game::input::playercontroller::PlayerController;
-use crate::game::physics::Physics;
-use crate::game::state::entityid::EntityId;
-use crate::game::state::physicsstate::PhysicsState;
-use crate::game::util::Util;
-
-#[derive(Serialize, Deserialize, Copy, Clone, Debug)]
-pub enum Kind {
-    Player,
-    Brick,
-    Wall,
-    Ball,
-    Goal,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum AnimationState {
-    Idle,
-    Moving,
-    Dashing,
-    Shooting,
-}
-
-#[derive(Serialize, Deserialize, Clone, Copy, Debug)]
-#[serde(tag = "type", rename_all = "lowercase")]
-pub enum Shape {
-    Circle { radius: f32 },
-    Rectangle { w: f32, h: f32 },
-}
+use crate::game::{
+    eventqueue::{EventQueue, GameEvent},
+    input::{inputframe::Vec2, playercontroller::PlayerController},
+    physics::Physics,
+    state::{entityid::EntityId, enums::*, physicsstate::PhysicsState},
+    util::Util,
+};
 
 #[derive(Clone)]
 pub struct State {
     pub physics_state: PhysicsState,
+    pub animation_state: AnimationState,
     pub is_static: bool,
     //pub is_enabled: bool,
     pub is_trigger: bool,
@@ -245,7 +219,7 @@ impl State {
         State {
             physics_state: PhysicsState::new(),
             is_static: false,
-            //is_enabled: true,
+            animation_state: AnimationState::Idle,
             is_trigger: false,
             is_alive: true,
             kind: Kind::Ball,

@@ -1,5 +1,5 @@
 use crate::game::state::entityid::EntityId;
-use crate::game::state::{Kind, State};
+use crate::game::state::{enums::Kind, State};
 use crate::game::world::World;
 pub const PLAYER_POSITIONS: [(f32, f32, f32); 8] = [
     (50.0, 50.0, 0.0),
