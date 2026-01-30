@@ -36,6 +36,22 @@ export class GameRenderer {
   draw(s: State, scale: number, offsetX: number, offsetY: number) {
     const sprite = spriteLibrary[s.kind.toString()];
     // Compute position & dimensions based on shape
+
+    let { x, y, w, h } = this.getDimensionsForShape(s, scale, offsetX, offsetY);
+    // --- SPRITE DRAWING ---
+    if (sprite && sprite.complete) {
+      this.drawSprite(s, sprite, w, h, x, y);
+    } else {
+      this.drawShape(s, scale, w, h, x, y);
+    }
+  }
+
+  private getDimensionsForShape(
+    s: State,
+    scale: number,
+    offsetX: number,
+    offsetY: number,
+  ) {
     let x = s.x * scale + offsetX;
     let y = s.y * scale + offsetY;
     let w = 0;
@@ -44,48 +60,56 @@ export class GameRenderer {
       w = s.shape.w * scale;
       h = s.shape.h * scale;
     } else if (s.shape.type === "circle") {
-      // For circles, you might center the sprite around (x, y)
       const r = s.shape.radius * scale;
       w = h = r * 2;
       x -= r; // Center it properly
       y -= r;
     }
-    // --- SPRITE DRAWING ---
-    if (sprite && sprite.complete) {
-      const cx = x + w / 2; // center of sprite
-      const cy = y + h / 2;
+    return { x, y, w, h };
+  }
+  // --- SPRITE DRAWING if no Anim ---
+  private drawSprite(
+    s: State,
+    sprite: HTMLImageElement,
+    w: number,
+    h: number,
+    x: number,
+    y: number,
+  ) {
+    const cx = x + w / 2; // center of sprite
+    const cy = y + h / 2;
 
-      this.ctx.save(); // Save current transform
-      this.ctx.translate(cx, cy); // Move origin to sprite center
+    this.ctx.save(); // Save current transform
+    this.ctx.translate(cx, cy); // Move origin to sprite center
 
-      // Only rotate if the state has an angle
-      if (s.angle && s.angle !== 0) {
-        this.ctx.rotate(s.angle); // s.angle should be in radians
-      }
-
-      // Draw sprite centered on new origin
-      this.ctx.drawImage(sprite, -w / 2, -h / 2, w, h);
-
-      this.ctx.restore(); // Restore transform
+    // Only rotate if the state has an angle
+    if (s.angle && s.angle !== 0) {
+      this.ctx.rotate(s.angle); // s.angle should be in radians
     }
 
-    // --- FALLBACK (no sprite) ---
-    else {
-      if (s.shape.type === "rectangle") {
-        this.ctx.fillStyle = s.is_static ? "gray" : "lime";
-        this.ctx.fillRect(x, y, w, h);
-      } else if (s.shape.type === "circle") {
-        this.ctx.beginPath();
-        this.ctx.arc(
-          s.x * scale + offsetX,
-          s.y * scale + offsetY,
-          s.shape.radius * scale,
-          0,
-          Math.PI * 2
-        );
-        this.ctx.fillStyle = s.is_static ? "gray" : "lime";
-        this.ctx.fill();
-      }
+    // Draw sprite centered on new origin
+    this.ctx.drawImage(sprite, -w / 2, -h / 2, w, h);
+
+    this.ctx.restore(); // Restore transform
+  }
+
+  // --- FALLBACK (no sprite) ---
+  private drawShape(
+    s: State,
+    scale: number,
+    w: number,
+    h: number,
+    x: number,
+    y: number,
+  ) {
+    if (s.shape.type === "rectangle") {
+      this.ctx.fillStyle = s.is_static ? "gray" : "lime";
+      this.ctx.fillRect(x, y, w, h);
+    } else if (s.shape.type === "circle") {
+      this.ctx.beginPath();
+      this.ctx.arc(x, y, s.shape.radius * scale, 0, Math.PI * 2);
+      this.ctx.fillStyle = s.is_static ? "gray" : "lime";
+      this.ctx.fill();
     }
   }
 
