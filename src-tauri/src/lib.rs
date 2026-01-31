@@ -73,6 +73,28 @@ fn quit_game(gm: tauri::State<Arc<Mutex<GameManager>>>) {
     gm.quit_game();
 }
 
+#[tauri::command]
+fn list_directories(root_path: String) -> Result<Vec<String>, String> {
+    let path = Path::new(&root_path);
+
+    let entries = fs::read_dir(path).map_err(|e| e.to_string())?;
+
+    let mut dirs = Vec::new();
+
+    for entry in entries {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let metadata = entry.metadata().map_err(|e| e.to_string())?;
+
+        if metadata.is_dir() {
+            if let Some(name) = entry.file_name().to_str() {
+                dirs.push(name.to_string());
+            }
+        }
+    }
+
+    Ok(dirs)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub async fn run() -> std::io::Result<()> {
     tauri::Builder::default()
@@ -103,6 +125,7 @@ pub async fn run() -> std::io::Result<()> {
             host_game,
             join_game,
             end_game,
+            list_directories,
             quit_game,
         ])
         .run(tauri::generate_context!())

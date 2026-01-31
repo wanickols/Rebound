@@ -1,6 +1,7 @@
 import { AnimationState, Kind } from "@/Game/State";
 import { AnimData } from "./AnimData";
 import { parseKind, parseAnimationState } from "./animutil";
+import { invoke } from "@tauri-apps/api/core";
 
 class AnimationLibrary {
   private animations = new Map<Kind, Map<AnimationState, AnimData>>();
@@ -74,12 +75,10 @@ class AnimationLibrary {
   }
 
   private async listDirectories(rootPath: string): Promise<string[]> {
-    // THIS is environment-specific.
-    // In Tauri, this usually comes from a backend command.
-    // Stub for now:
-    throw new Error("listDirectories not implemented");
+    return await invoke<string[]>("list_directories", {
+      rootPath,
+    });
   }
-
   get(kind: Kind, state: AnimationState): AnimData | undefined {
     return this.animations.get(kind)?.get(state);
   }
