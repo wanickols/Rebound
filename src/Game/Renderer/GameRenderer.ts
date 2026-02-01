@@ -2,6 +2,7 @@ const GAME_WIDTH = 320;
 const GAME_HEIGHT = 180;
 import { spriteLibrary } from "./SpriteLibrary";
 import { State } from "../State";
+import { animationLibrary } from "./Animation/AnimationLibrary";
 
 export class GameRenderer {
   private ctx: CanvasRenderingContext2D;
@@ -34,11 +35,15 @@ export class GameRenderer {
   }
 
   draw(s: State, scale: number, offsetX: number, offsetY: number) {
-    const sprite = spriteLibrary[s.kind.toString()];
-    // Compute position & dimensions based on shape
-
     let { x, y, w, h } = this.getDimensionsForShape(s, scale, offsetX, offsetY);
-    // --- SPRITE DRAWING ---
+
+    const anim = animationLibrary.get(s.kind, s.animation_state);
+    if (anim) {
+      this.drawAnimated(anim, w, h, x, y);
+      return;
+    }
+
+    const sprite = spriteLibrary[s.kind.toString()];
     if (sprite && sprite.complete) {
       this.drawSprite(s, sprite, w, h, x, y);
     } else {
@@ -46,6 +51,7 @@ export class GameRenderer {
     }
   }
 
+  // Compute position & dimensions based on shape
   private getDimensionsForShape(
     s: State,
     scale: number,
@@ -67,6 +73,15 @@ export class GameRenderer {
     }
     return { x, y, w, h };
   }
+
+  // --- Animation Handling ---
+  private drawAnimated(anim: any, w: number, h: number, x: number, y: number) {
+    const frameIndex = anim.getFrameIndex();
+    const sourceRect = anim.getSourceRect(frameIndex);
+    const sprite = anim.image;
+    this.ctx.drawImage(sprite, sourceRect.x, sourceRect.y, sourceRect.w, sourceRect.h, x, y, w, h);
+  }
+
   // --- SPRITE DRAWING if no Anim ---
   private drawSprite(
     s: State,

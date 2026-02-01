@@ -2,6 +2,7 @@ export class AnimData {
   readonly frameWidth: number;
   readonly frameHeight: number;
   readonly frameCount: number;
+  readonly rowIndex: number;
   readonly frameDurationMs: number;
   readonly loop: boolean;
   readonly image: HTMLImageElement;
@@ -13,6 +14,7 @@ export class AnimData {
       frameWidth: number;
       frameHeight: number;
       frameCount: number;
+      rowIndex: number;
       frameDurationMs: number;
       loop?: boolean;
     },
@@ -21,6 +23,7 @@ export class AnimData {
     this.frameWidth = opts.frameWidth;
     this.frameHeight = opts.frameHeight;
     this.frameCount = opts.frameCount;
+    this.rowIndex = opts.rowIndex;
     this.frameDurationMs = opts.frameDurationMs;
     this.loop = opts.loop ?? true;
     this.image = _image;
@@ -49,9 +52,9 @@ export class AnimData {
 
     return {
       x: frameIndex * this.frameWidth,
-      y: 0,
-      width: this.frameWidth,
-      height: this.frameHeight,
+      y: this.rowIndex * this.frameHeight,
+      w: this.frameWidth,
+      h: this.frameHeight,
     };
   }
 }
