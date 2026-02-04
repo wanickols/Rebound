@@ -11,6 +11,14 @@ export class GameRenderer {
   constructor(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) {
     this.ctx = ctx;
     this.canvas = canvas;
+    animationLibrary
+      .loadFromFolder("/assets/animations")
+      .then(() => {
+        console.log("Animations loaded");
+      })
+      .catch((err) => {
+        console.error("Failed to load animations", err);
+      });
   }
 
   updateState(states: State[]) {
@@ -79,7 +87,17 @@ export class GameRenderer {
     const frameIndex = anim.getFrameIndex();
     const sourceRect = anim.getSourceRect(frameIndex);
     const sprite = anim.image;
-    this.ctx.drawImage(sprite, sourceRect.x, sourceRect.y, sourceRect.w, sourceRect.h, x, y, w, h);
+    this.ctx.drawImage(
+      sprite,
+      sourceRect.x,
+      sourceRect.y,
+      sourceRect.w,
+      sourceRect.h,
+      x,
+      y,
+      w,
+      h,
+    );
   }
 
   // --- SPRITE DRAWING if no Anim ---

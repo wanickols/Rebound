@@ -15,6 +15,7 @@ class AnimationLibrary {
     this.loaded = true;
 
     const folders = await this.listDirectories(rootPath);
+    console.log("Animation folders:", folders);
     for (const folder of folders) {
       try {
         await this.loadAnimationPackage(`${rootPath}/${folder}`);
@@ -25,25 +26,41 @@ class AnimationLibrary {
   }
 
   private async loadAnimationPackage(folderPath: string): Promise<void> {
-    const metaPath = `${folderPath}/meta.json`;
     const imagePath = await this.findImage(folderPath);
-
     if (!imagePath) {
-      throw new Error("No image found");
+      throw new Error(`No image found in ${folderPath}`);
     }
 
-    const meta = await this.loadMeta(metaPath);
     const image = await this.loadImage(imagePath);
 
-    const anim = new AnimData(meta, image);
-    const kind = parseKind(meta.kind);
-    const state = parseAnimationState(meta.state);
+    console.log("Image Files :", imagePath);
 
-    if (!this.animations.has(kind)) {
-      this.animations.set(kind, new Map<AnimationState, AnimData>());
+    const jsonFiles = await this.tryLoadJson(folderPath);
+    console.log("Animation JSON files in", folderPath, ":", jsonFiles);
+    for (const jsonPath of jsonFiles) {
+      const meta = await this.loadMeta(jsonPath);
+
+      const anim = new AnimData(meta, image);
+      const kind = parseKind(meta.kind);
+      const state = parseAnimationState(meta.state);
+
+      if (!this.animations.has(kind)) {
+        this.animations.set(kind, new Map());
+      }
+
+      this.animations.get(kind)!.set(state, anim);
     }
+  }
 
-    this.animations.get(kind)!.set(state, anim);
+  private async tryLoadJson(path: string): Promise<any | null> {
+    try {
+      const res = await fetch(path);
+      if (!res.ok) return null;
+      console.log("Loaded JSON from", path);
+      return await res.json();
+    } catch {
+      return null;
+    }
   }
 
   private async loadMeta(path: string): Promise<any> {
@@ -68,16 +85,18 @@ class AnimationLibrary {
     for (const ext of candidates) {
       const path = `${folderPath}/sprite.${ext}`;
       const res = await fetch(path, { method: "HEAD" });
-      if (res.ok) return path;
+      if (res.ok) {
+        console.log("Found image:", path);
+        return path;
+      }
     }
-
+    console.warn("No image found in", folderPath);
     return null;
   }
 
   private async listDirectories(rootPath: string): Promise<string[]> {
-    return await invoke<string[]>("list_directories", {
-      rootPath,
-    });
+    console.log("Listing directories in", rootPath);
+    return await invoke<string[]>("list_animation_folders");
   }
   get(kind: Kind, state: AnimationState): AnimData | undefined {
     return this.animations.get(kind)?.get(state);
