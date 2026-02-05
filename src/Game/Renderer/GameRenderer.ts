@@ -12,7 +12,7 @@ export class GameRenderer {
     this.ctx = ctx;
     this.canvas = canvas;
     animationLibrary
-      .loadFromFolder("/assets/animations")
+      .loadAllAnimations()
       .then(() => {
         console.log("Animations loaded");
       })
@@ -84,9 +84,10 @@ export class GameRenderer {
 
   // --- Animation Handling ---
   private drawAnimated(anim: any, w: number, h: number, x: number, y: number) {
-    const frameIndex = anim.getFrameIndex();
-    const sourceRect = anim.getSourceRect(frameIndex);
+    const sourceRect = anim.getSourceRect();
     const sprite = anim.image;
+    //console.log("Drawing animated sprite frame:", sourceRect);
+
     this.ctx.drawImage(
       sprite,
       sourceRect.x,

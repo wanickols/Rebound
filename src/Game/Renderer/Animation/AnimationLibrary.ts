@@ -1,65 +1,100 @@
 import { AnimationState, Kind } from "@/Game/State";
 import { AnimData } from "./AnimData";
 import { parseKind, parseAnimationState } from "./animutil";
-import { invoke } from "@tauri-apps/api/core";
+import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 
 class AnimationLibrary {
   private animations = new Map<Kind, Map<AnimationState, AnimData>>();
-
+  rootPath = "resources/assets/animations";
   private loaded = false;
 
-  async loadFromFolder(rootPath: string): Promise<void> {
-    if (this.loaded) {
-      throw new Error("AnimationLibrary already loaded");
-    }
+  async loadAllAnimations(): Promise<void> {
+    if (this.loaded) return;
     this.loaded = true;
 
-    const folders = await this.listDirectories(rootPath);
-    console.log("Animation folders:", folders);
-    for (const folder of folders) {
+    // Iterate through each Kind
+    for (const kind of Object.values(Kind)) {
       try {
-        await this.loadAnimationPackage(`${rootPath}/${folder}`);
-      } catch (err) {
-        console.warn(`Failed to load animation in ${folder}`, err);
+        const kindMap = await this.loadAnimation(kind);
+        if (!kindMap) continue;
+
+        this.animations.set(kind, kindMap);
+      } catch (e) {
+        console.log(`Failed to load animations for kind ${kind}:`, e);
       }
     }
   }
 
-  private async loadAnimationPackage(folderPath: string): Promise<void> {
-    const imagePath = await this.findImage(folderPath);
-    if (!imagePath) {
-      throw new Error(`No image found in ${folderPath}`);
-    }
+  private async loadAnimation(
+    kind: Kind,
+  ): Promise<Promise<Map<AnimationState, AnimData>> | null> {
+    const kindMap = new Map<AnimationState, AnimData>();
 
-    const image = await this.loadImage(imagePath);
+    // Load the spritesheet once per kind
+    const spritePath = convertFileSrc(
+      `${this.rootPath}/${kind.toString().toLowerCase()}/sprite.png`,
+    );
+    console.log("Loading sprite from", spritePath);
 
-    console.log("Image Files :", imagePath);
-
-    const jsonFiles = await this.tryLoadJson(folderPath);
-    console.log("Animation JSON files in", folderPath, ":", jsonFiles);
-    for (const jsonPath of jsonFiles) {
-      const meta = await this.loadMeta(jsonPath);
-
-      const anim = new AnimData(meta, image);
-      const kind = parseKind(meta.kind);
-      const state = parseAnimationState(meta.state);
-
-      if (!this.animations.has(kind)) {
-        this.animations.set(kind, new Map());
-      }
-
-      this.animations.get(kind)!.set(state, anim);
-    }
-  }
-
-  private async tryLoadJson(path: string): Promise<any | null> {
+    let image: HTMLImageElement;
     try {
-      const res = await fetch(path);
-      if (!res.ok) return null;
-      console.log("Loaded JSON from", path);
-      return await res.json();
-    } catch {
+      image = new Image();
+      await new Promise((resolve, reject) => {
+        image.onload = () => {
+          console.log(`Successfully loaded: ${spritePath}`);
+          resolve(null);
+        };
+        image.onerror = (e) => {
+          console.error(`Image load error for ${spritePath}:`, e);
+          reject(new Error(`Failed to load image: ${spritePath}`));
+        };
+        console.log(`Attempting to load: ${spritePath}`);
+        image.src = spritePath;
+      });
+    } catch (e) {
+      console.log(`Failed to load image for kind ${kind}:`, e);
       return null;
+    }
+
+    // Iterate through each AnimationState
+    for (const state of Object.values(AnimationState)) {
+      await this.loadState(kind, state, image).then((anim) => {
+        if (anim) {
+          kindMap.set(state, anim);
+        }
+      });
+    }
+
+    return kindMap;
+  }
+
+  private async loadState(
+    kind: Kind,
+    state: AnimationState,
+    image: HTMLImageElement,
+  ): Promise<AnimData | undefined> {
+    try {
+      const jsonPath = convertFileSrc(
+        `${this.rootPath}/${kind.toString().toLowerCase()}/${state.toString().toLowerCase()}.json`,
+      );
+      const meta = await this.loadMeta(jsonPath);
+      console.log(`Loaded animation meta for ${kind}/${state}:`, meta);
+      const anim = new AnimData(
+        {
+          frameWidth: meta.frame_width,
+          frameHeight: meta.frame_height,
+          frameCount: meta.frame_count,
+          rowIndex: meta.row_index,
+          frameDurationMs: meta.frame_duration_ms,
+          loop: meta.loop,
+        },
+        image,
+      );
+
+      return anim;
+    } catch (e) {
+      // Animation doesn't exist for this kind/state combo, skip it
+      console.log(`No animation for ${kind}/${state}`);
     }
   }
 
@@ -69,35 +104,6 @@ class AnimationLibrary {
     return res.json();
   }
 
-  private loadImage(path: string): Promise<HTMLImageElement> {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => resolve(img);
-      img.onerror = reject;
-      img.src = path;
-    });
-  }
-
-  private async findImage(folderPath: string): Promise<string | null> {
-    // naive but effective
-    const candidates = ["png", "webp", "jpg"];
-
-    for (const ext of candidates) {
-      const path = `${folderPath}/sprite.${ext}`;
-      const res = await fetch(path, { method: "HEAD" });
-      if (res.ok) {
-        console.log("Found image:", path);
-        return path;
-      }
-    }
-    console.warn("No image found in", folderPath);
-    return null;
-  }
-
-  private async listDirectories(rootPath: string): Promise<string[]> {
-    console.log("Listing directories in", rootPath);
-    return await invoke<string[]>("list_animation_folders");
-  }
   get(kind: Kind, state: AnimationState): AnimData | undefined {
     return this.animations.get(kind)?.get(state);
   }

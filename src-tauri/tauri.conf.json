@@ -20,7 +20,11 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; frame-src 'self' asset: http://asset.localhost; style-src 'self' 'unsafe-inline'; script-src 'self'; ",
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["resources/assets/animations/**/*"]
+      }
     }
   },
   "bundle": {
@@ -33,8 +37,6 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": {
-      "assets/animations": "assets/animations"
-    }
+    "resources": ["resources/assets/animations/**/*"]
   }
 }

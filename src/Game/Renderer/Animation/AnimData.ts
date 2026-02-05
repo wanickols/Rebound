@@ -8,6 +8,8 @@ export class AnimData {
   readonly image: HTMLImageElement;
 
   private elapsedMs = 0;
+  private currFrame = 0;
+  private isDone = false;
 
   constructor(
     opts: {
@@ -31,6 +33,12 @@ export class AnimData {
 
   reset(): void {
     this.elapsedMs = 0;
+    this.currFrame = 0;
+    this.isDone = false;
+  }
+
+  getDone(): boolean {
+    return this.isDone;
   }
 
   update(deltaMs: number): void {
@@ -38,13 +46,16 @@ export class AnimData {
   }
 
   getFrameIndex(): number {
-    const frame = Math.floor(this.elapsedMs / this.frameDurationMs);
-
-    if (this.loop) {
-      return frame % this.frameCount;
+    if (this.elapsedMs >= this.frameDurationMs) {
+      if (this.currFrame++ >= this.frameCount) {
+        if (this.loop) {
+          this.currFrame = 0;
+        } else {
+          this.isDone = true;
+        }
+      }
     }
-
-    return Math.min(frame, this.frameCount - 1);
+    return this.currFrame;
   }
 
   getSourceRect() {
