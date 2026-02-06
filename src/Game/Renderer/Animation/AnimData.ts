@@ -35,6 +35,7 @@ export class AnimData {
     this.elapsedMs = 0;
     this.currFrame = 0;
     this.isDone = false;
+    console.log("Animation reset");
   }
 
   getDone(): boolean {
@@ -47,7 +48,8 @@ export class AnimData {
 
   getFrameIndex(): number {
     if (this.elapsedMs >= this.frameDurationMs) {
-      if (this.currFrame++ >= this.frameCount) {
+      this.elapsedMs = 0;
+      if (this.currFrame++ >= this.frameCount - 1) {
         if (this.loop) {
           this.currFrame = 0;
         } else {

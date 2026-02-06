@@ -27,6 +27,7 @@ onMounted(async () => {
   if (!ctx) return;
 
   renderer = new GameRenderer(ctx, canvas.value);
+  renderer.startRenderLoop();
 
   // listen for backend state updates
   await listen<GamePayload>("game-state", (event) => {
@@ -36,6 +37,7 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+  renderer.stopRenderLoop();
   window.removeEventListener("resize", resizeCanvas);
 });
 

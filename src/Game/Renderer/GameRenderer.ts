@@ -7,6 +7,8 @@ import { animationLibrary } from "./Animation/AnimationLibrary";
 export class GameRenderer {
   private ctx: CanvasRenderingContext2D;
   private canvas: HTMLCanvasElement;
+  private states: State[] = [];
+  private rafId: number | null = null;
 
   constructor(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) {
     this.ctx = ctx;
@@ -22,14 +24,38 @@ export class GameRenderer {
   }
 
   updateState(states: State[]) {
-    const scale = this.getScale();
-    const offsetX = (this.canvas.width - GAME_WIDTH * scale) / 2;
-    const offsetY = (this.canvas.height - GAME_HEIGHT * scale) / 2;
+    this.states = states;
+  }
 
-    this.clear();
+  startRenderLoop() {
+    if (this.rafId !== null) return; // Already running
 
-    for (const s of states) {
-      this.draw(s, scale, offsetX, offsetY);
+    let lastTime = performance.now();
+
+    const loop = (currentTime: number) => {
+      const deltaMs = currentTime - lastTime;
+      lastTime = currentTime;
+
+      const scale = this.getScale();
+      const offsetX = (this.canvas.width - GAME_WIDTH * scale) / 2;
+      const offsetY = (this.canvas.height - GAME_HEIGHT * scale) / 2;
+
+      this.clear();
+      // Draw current state
+      for (const s of this.states) {
+        this.draw(s, scale, offsetX, offsetY, deltaMs);
+      }
+
+      this.rafId = requestAnimationFrame(loop);
+    };
+
+    this.rafId = requestAnimationFrame(loop);
+  }
+
+  stopRenderLoop() {
+    if (this.rafId !== null) {
+      cancelAnimationFrame(this.rafId);
+      this.rafId = null;
     }
   }
 
@@ -42,10 +68,19 @@ export class GameRenderer {
     return Math.min(scaleX, scaleY);
   }
 
-  draw(s: State, scale: number, offsetX: number, offsetY: number) {
+  draw(
+    s: State,
+    scale: number,
+    offsetX: number,
+    offsetY: number,
+    deltaMs: number,
+  ) {
     let { x, y, w, h } = this.getDimensionsForShape(s, scale, offsetX, offsetY);
 
+    this.applyRotation(s.angle, x + w / 2, y + h / 2);
+
     const anim = animationLibrary.get(s.kind, s.animation_state);
+    anim?.update(deltaMs);
     if (anim) {
       this.drawAnimated(anim, w, h, x, y);
       return;
@@ -99,6 +134,15 @@ export class GameRenderer {
       w,
       h,
     );
+    this.ctx.restore();
+  }
+
+  private applyRotation(angle: number, cx: number, cy: number) {
+    if (!angle || angle === 0) return; // No rotation needed
+    this.ctx.save();
+    this.ctx.translate(cx, cy);
+    this.ctx.rotate(angle);
+    this.ctx.translate(-cx, -cy);
   }
 
   // --- SPRITE DRAWING if no Anim ---
@@ -110,21 +154,9 @@ export class GameRenderer {
     x: number,
     y: number,
   ) {
-    const cx = x + w / 2; // center of sprite
-    const cy = y + h / 2;
-
-    this.ctx.save(); // Save current transform
-    this.ctx.translate(cx, cy); // Move origin to sprite center
-
-    // Only rotate if the state has an angle
-    if (s.angle && s.angle !== 0) {
-      this.ctx.rotate(s.angle); // s.angle should be in radians
-    }
-
     // Draw sprite centered on new origin
-    this.ctx.drawImage(sprite, -w / 2, -h / 2, w, h);
-
-    this.ctx.restore(); // Restore transform
+    this.ctx.drawImage(sprite, x, y, w, h);
+    this.ctx.restore();
   }
 
   // --- FALLBACK (no sprite) ---

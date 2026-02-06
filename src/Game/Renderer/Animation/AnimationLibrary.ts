@@ -5,6 +5,7 @@ import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 
 class AnimationLibrary {
   private animations = new Map<Kind, Map<AnimationState, AnimData>>();
+  private lastAnimation = new Map<Kind, AnimationState>();
   rootPath = "resources/assets/animations";
   private loaded = false;
 
@@ -19,6 +20,7 @@ class AnimationLibrary {
         if (!kindMap) continue;
 
         this.animations.set(kind, kindMap);
+        this.lastAnimation.set(kind, AnimationState.Idle);
       } catch (e) {
         console.log(`Failed to load animations for kind ${kind}:`, e);
       }
@@ -104,8 +106,26 @@ class AnimationLibrary {
     return res.json();
   }
 
+  // Get now handles a last animation, resetting animations when done, and only switching animations if it's new.
   get(kind: Kind, state: AnimationState): AnimData | undefined {
-    return this.animations.get(kind)?.get(state);
+    let data = this.animations.get(kind)?.get(state);
+    if (this.lastAnimation.get(kind) === state) {
+      console.log("Same animation state, no change");
+      if (data?.getDone()) {
+        data.reset(); // think on this. could remove so anims only play once
+        data = this.animations.get(kind)?.get(AnimationState.Idle);
+      }
+
+      return data;
+    } else {
+      let lastState = this.lastAnimation.get(kind);
+      let lastData = this.animations
+        .get(kind)
+        ?.get(lastState || AnimationState.Idle);
+      lastData?.reset();
+      this.lastAnimation.set(kind, state);
+    }
+    return data;
   }
 
   clear(): void {
