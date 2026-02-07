@@ -8,13 +8,12 @@ import GameCanvas from "@/components/GameCanvas.vue";
 
 const controllerManager = ref<ControllerManager | null>(null);
 //const keyboardManager = new KeyboardManager();
-const inputManager = ref<InputManager | null>(null);
+const inputManager = new InputManager();
 
 const POLL_INTERVAL = 60; // ms, adjust if needed
 let intervalId: number;
 
 onMounted(() => {
-  inputManager.value = new InputManager();
   controllerManager.value = new ControllerManager();
   bus.on("gamepadEvent", onGamepadEvent);
 
@@ -32,20 +31,20 @@ onBeforeUnmount(() => {
   bus.off("controllerDisconnected", onControllerRemoved);
 
   clearInterval(intervalId);
-  inputManager.value?.destroy();
+  inputManager.destroy();
   controllerManager.value?.destroy();
 });
 
 function onGamepadEvent(gamepad: GamepadData) {
-  inputManager.value?.handleGamepadEvent(gamepad);
+  inputManager.handleGamepadEvent(gamepad);
 }
 
 function onControllerAvailable(index: number) {
-  inputManager.value?.onControllerConnected(index);
+  inputManager.onControllerConnected(index);
 }
 
 function onControllerRemoved(index: number) {
-  inputManager.value?.onControllerDisconnected(index);
+  inputManager.onControllerDisconnected(index);
 }
 </script>
 

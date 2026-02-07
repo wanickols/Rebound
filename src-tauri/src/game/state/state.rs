@@ -209,6 +209,10 @@ impl State {
     }
 
     pub fn is_holding(&self) -> bool {
+        if self.player_controller.is_none() {
+            return false;
+        }
+
         self.player_controller
             .as_ref()
             .map_or(false, |pc| pc.is_holding)

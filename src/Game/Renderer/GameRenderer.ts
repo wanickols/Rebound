@@ -1,18 +1,25 @@
 const GAME_WIDTH = 320;
 const GAME_HEIGHT = 180;
 import { spriteLibrary } from "./SpriteLibrary";
-import { State } from "../State";
+import { AnimationState, State } from "../State";
 import { animationLibrary } from "./Animation/AnimationLibrary";
+import { InputManager } from "../Input/InputManager";
 
 export class GameRenderer {
   private ctx: CanvasRenderingContext2D;
   private canvas: HTMLCanvasElement;
   private states: State[] = [];
   private rafId: number | null = null;
+  private inputManager: InputManager;
 
-  constructor(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) {
+  constructor(
+    ctx: CanvasRenderingContext2D,
+    canvas: HTMLCanvasElement,
+    inputManager: InputManager,
+  ) {
     this.ctx = ctx;
     this.canvas = canvas;
+    this.inputManager = inputManager;
     animationLibrary
       .loadAllAnimations()
       .then(() => {
@@ -79,9 +86,11 @@ export class GameRenderer {
 
     this.applyRotation(s.angle, x + w / 2, y + h / 2);
 
-    const anim = animationLibrary.get(s.kind, s.animation_state);
-    anim?.update(deltaMs);
+    const state = this.determineAnimation(s);
+    const anim = animationLibrary.get(s.kind, state);
+
     if (anim) {
+      anim.update(deltaMs);
       this.drawAnimated(anim, w, h, x, y);
       return;
     }
@@ -92,6 +101,18 @@ export class GameRenderer {
     } else {
       this.drawShape(s, scale, w, h, x, y);
     }
+  }
+
+  private determineAnimation(s: State): AnimationState {
+    let shooting = this.inputManager.isShooting;
+    if (shooting) {
+      return AnimationState.Shooting;
+    }
+
+    if (s.vx !== 0 || s.vy !== 0) {
+      return AnimationState.Moving;
+    }
+    return AnimationState.Idle;
   }
 
   // Compute position & dimensions based on shape

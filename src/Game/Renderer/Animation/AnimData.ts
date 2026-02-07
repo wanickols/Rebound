@@ -47,6 +47,10 @@ export class AnimData {
   }
 
   getFrameIndex(): number {
+    if (this.isDone) {
+      return this.currFrame; // Stay on last frame if done
+    }
+
     if (this.elapsedMs >= this.frameDurationMs) {
       this.elapsedMs = 0;
       if (this.currFrame++ >= this.frameCount - 1) {
@@ -54,6 +58,7 @@ export class AnimData {
           this.currFrame = 0;
         } else {
           this.isDone = true;
+          this.currFrame = this.frameCount - 1; // Stay on last frame if done
         }
       }
     }

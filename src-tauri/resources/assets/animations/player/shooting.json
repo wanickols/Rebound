@@ -1,0 +1,10 @@
+{
+  "kind": "player",
+  "state": "idle",
+  "frame_width": 256,
+  "frame_height": 256,
+  "frame_count": 2,
+  "row_index": 1,
+  "frame_duration_ms": 60,
+  "loop": false
+}
