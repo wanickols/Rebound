@@ -1,4 +1,4 @@
-import { State } from "../State";
+import { AnimationState, State } from "../State";
 import { GamePhase } from "./GamePhase";
 import { ScoreManager } from "./ScoreManager";
 
@@ -17,7 +17,8 @@ export class GamePayload {
         s.vx,
         s.vy,
         s.shape,
-        s.animation_state,
+        s.is_holding,
+        AnimationState.Idle,
         s.angle,
         s.is_static,
         s.kind,

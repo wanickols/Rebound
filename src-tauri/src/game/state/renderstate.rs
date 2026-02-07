@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-use crate::game::state::{entityid::EntityId, AnimationState, Kind, Shape, State};
+use crate::game::state::{entityid::EntityId, Kind, Shape, State};
 
 #[derive(Serialize, serde::Deserialize, Clone, Debug)]
 pub struct RenderState {
@@ -9,7 +9,7 @@ pub struct RenderState {
     pub vx: f32,
     pub vy: f32,
     pub shape: Shape,
-    pub animation_state: AnimationState,
+    pub is_holding: bool,
     pub angle: f32,
     pub is_static: bool,
     pub is_trigger: bool,
@@ -25,7 +25,7 @@ impl From<&State> for RenderState {
             vx: state.physics_state.vel.x,
             vy: state.physics_state.vel.y,
             shape: state.physics_state.shape,
-            animation_state: state.animation_state.clone(),
+            is_holding: state.is_holding(),
             angle: state.physics_state.angle,
             is_static: state.is_static,
             is_trigger: state.is_trigger,

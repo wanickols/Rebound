@@ -110,9 +110,7 @@ class AnimationLibrary {
   get(kind: Kind, state: AnimationState): AnimData | undefined {
     let data = this.animations.get(kind)?.get(state);
     if (this.lastAnimation.get(kind) === state) {
-      console.log("Same animation state, no change");
       if (data?.getDone()) {
-        data.reset(); // think on this. could remove so anims only play once
         data = this.animations.get(kind)?.get(AnimationState.Idle);
       }
 

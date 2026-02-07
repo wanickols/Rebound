@@ -3,6 +3,7 @@ import { ref, onMounted, onBeforeUnmount } from "vue";
 import { GameRenderer } from "@/Game/Renderer/GameRenderer";
 import { listen } from "@tauri-apps/api/event";
 import { GamePayload } from "@/Game/Payload/GamePayload";
+import { InputManager } from "@/Game/Input/InputManager";
 
 const canvas = ref<HTMLCanvasElement | null>(null);
 
@@ -10,6 +11,10 @@ const GAME_WIDTH = 1920;
 const GAME_HEIGHT = 1080;
 
 var renderer: GameRenderer;
+
+const props = defineProps<{
+  inputManager: InputManager;
+}>();
 
 onMounted(async () => {
   if (!canvas.value) return;
@@ -26,7 +31,7 @@ onMounted(async () => {
   const ctx = canvas.value.getContext("2d");
   if (!ctx) return;
 
-  renderer = new GameRenderer(ctx, canvas.value);
+  renderer = new GameRenderer(ctx, canvas.value, props.inputManager);
   renderer.startRenderLoop();
 
   // listen for backend state updates

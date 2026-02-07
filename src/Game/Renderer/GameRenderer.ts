@@ -1,18 +1,29 @@
 const GAME_WIDTH = 320;
 const GAME_HEIGHT = 180;
 import { spriteLibrary } from "./SpriteLibrary";
-import { State } from "../State";
+import { AnimationState, State } from "../State";
 import { animationLibrary } from "./Animation/AnimationLibrary";
+import { InputManager } from "../Input/InputManager";
 
 export class GameRenderer {
   private ctx: CanvasRenderingContext2D;
   private canvas: HTMLCanvasElement;
   private states: State[] = [];
   private rafId: number | null = null;
+  private inputManager: InputManager;
 
-  constructor(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) {
+  private confirmedHolding = false;
+  private holdingTimeout: number | null = null;
+  private readonly HOLD_CONFIRM_MS = 100;
+
+  constructor(
+    ctx: CanvasRenderingContext2D,
+    canvas: HTMLCanvasElement,
+    inputManager: InputManager,
+  ) {
     this.ctx = ctx;
     this.canvas = canvas;
+    this.inputManager = inputManager;
     animationLibrary
       .loadAllAnimations()
       .then(() => {
@@ -79,9 +90,12 @@ export class GameRenderer {
 
     this.applyRotation(s.angle, x + w / 2, y + h / 2);
 
-    const anim = animationLibrary.get(s.kind, s.animation_state);
-    anim?.update(deltaMs);
+    this.updateHolding(s);
+    const state = this.determineAnimation(s);
+    const anim = animationLibrary.get(s.kind, state);
+
     if (anim) {
+      anim.update(deltaMs);
       this.drawAnimated(anim, w, h, x, y);
       return;
     }
@@ -92,6 +106,41 @@ export class GameRenderer {
     } else {
       this.drawShape(s, scale, w, h, x, y);
     }
+  }
+
+  private determineAnimation(s: State): AnimationState {
+    let shooting = this.inputManager.isShooting;
+    if (shooting && this.confirmedHolding) {
+      return AnimationState.Shooting;
+    }
+
+    if (s.vx !== 0 || s.vy !== 0) {
+      return AnimationState.Moving;
+    }
+    return AnimationState.Idle;
+  }
+
+  private updateHolding(s: State) {
+    if (s.kind != "Player") return;
+    if (s.is_holding) {
+      if (!this.confirmedHolding && this.holdingTimeout === null) {
+        console.log("Holding confirmed");
+        this.holdingTimeout = window.setTimeout(() => {
+          this.confirmedHolding = true;
+
+          this.holdingTimeout = null;
+        }, 1000);
+      }
+    } else {
+      this.holdingTimeout = window.setTimeout(() => {
+        this.confirmedHolding = false;
+
+        this.holdingTimeout = null;
+      }, 50);
+    }
+    console.log(
+      `Holding: ${s.is_holding}, Confirmed: ${this.confirmedHolding}, Timeout: ${this.holdingTimeout}`,
+    );
   }
 
   // Compute position & dimensions based on shape

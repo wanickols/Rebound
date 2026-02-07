@@ -1,4 +1,3 @@
-
 import { GamepadData } from "./ControllerManager";
 import { listen } from "@tauri-apps/api/event";
 import {
@@ -8,9 +7,7 @@ import {
   SHOULDER,
   Vec2,
 } from "./InputFrame";
-import {
-  sendClientRequest,
-} from "./ClientRequest";
+import { sendClientRequest } from "./ClientRequest";
 
 export type PlayerId = number;
 
@@ -18,6 +15,8 @@ export class InputManager {
   //Movement
   lastMove: Record<number, { x: number; y: number }> = {};
   lastInput: Map<number, InputFrame> = new Map();
+
+  public isShooting = false;
 
   // players that exist (from backend)
   private players = new Set<PlayerId>();
@@ -34,7 +33,7 @@ export class InputManager {
         console.log("New player added:", newPlayerId);
 
         const freeController = Array.from(this.bindings.entries()).find(
-          ([_, bound]) => bound === null
+          ([_, bound]) => bound === null,
         );
         if (freeController) {
           this.bindings.set(freeController[0], newPlayerId);
@@ -106,6 +105,8 @@ export class InputManager {
         place: pad.buttons[FACE.RIGHT],
       },
     };
+
+    this.isShooting = pad.buttons[SHOULDER.RIGHT_TRIGGER];
 
     // Compare to last frame
     const lastFrame = this.lastInput.get(playerId);
