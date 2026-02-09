@@ -4,6 +4,7 @@ import { spriteLibrary } from "./SpriteLibrary";
 import { AnimationState, State } from "../State";
 import { animationLibrary } from "./Animation/AnimationLibrary";
 import { InputManager } from "../Input/InputManager";
+import { AnimPlayer } from "./Animation/AnimPlayer";
 
 export class GameRenderer {
   private ctx: CanvasRenderingContext2D;
@@ -91,11 +92,11 @@ export class GameRenderer {
     this.applyRotation(s.angle, x + w / 2, y + h / 2);
 
     this.updateHolding(s);
-    const state = this.determineAnimation(s);
+    const state = this.determineAnimationState(s);
     const anim = animationLibrary.get(s.kind, state);
 
     if (anim) {
-      anim.update(deltaMs);
+      this.handleAnimPlayers(s, anim, deltaMs);
       this.drawAnimated(anim, w, h, x, y);
       return;
     }
@@ -108,7 +109,21 @@ export class GameRenderer {
     }
   }
 
-  private determineAnimation(s: State): AnimationState {
+  private animPlayers = new Map<number, AnimPlayer>();
+
+  private handleAnimPlayers(s: State, anim: any, deltaMs: number) {
+    let player = this.animPlayers.get(s.id);
+    if (!player) {
+      player = new AnimPlayer();
+      this.animPlayers.set(s.id, player);
+    }
+
+    player.setLatestAnimData(anim);
+
+    player.update(deltaMs);
+  }
+
+  private determineAnimationState(s: State): AnimationState {
     let shooting = this.inputManager.isShooting;
     if (shooting && this.confirmedHolding) {
       return AnimationState.Shooting;

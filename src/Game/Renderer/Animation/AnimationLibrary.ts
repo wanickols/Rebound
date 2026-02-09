@@ -106,24 +106,8 @@ class AnimationLibrary {
     return res.json();
   }
 
-  // Get now handles a last animation, resetting animations when done, and only switching animations if it's new.
   get(kind: Kind, state: AnimationState): AnimData | undefined {
-    let data = this.animations.get(kind)?.get(state);
-    if (this.lastAnimation.get(kind) === state) {
-      if (data?.getDone()) {
-        data = this.animations.get(kind)?.get(AnimationState.Idle);
-      }
-
-      return data;
-    } else {
-      let lastState = this.lastAnimation.get(kind);
-      let lastData = this.animations
-        .get(kind)
-        ?.get(lastState || AnimationState.Idle);
-      lastData?.reset();
-      this.lastAnimation.set(kind, state);
-    }
-    return data;
+    return this.animations.get(kind)?.get(state);
   }
 
   clear(): void {

@@ -7,10 +7,6 @@ export class AnimData {
   readonly loop: boolean;
   readonly image: HTMLImageElement;
 
-  private elapsedMs = 0;
-  private currFrame = 0;
-  private isDone = false;
-
   constructor(
     opts: {
       frameWidth: number;
@@ -31,43 +27,12 @@ export class AnimData {
     this.image = _image;
   }
 
-  reset(): void {
-    this.elapsedMs = 0;
-    this.currFrame = 0;
-    this.isDone = false;
-    console.log("Animation reset");
-  }
-
-  getDone(): boolean {
-    return this.isDone;
-  }
-
-  update(deltaMs: number): void {
-    this.elapsedMs += deltaMs;
-  }
-
-  getFrameIndex(): number {
-    if (this.isDone) {
-      return this.currFrame; // Stay on last frame if done
-    }
-
-    if (this.elapsedMs >= this.frameDurationMs) {
-      this.elapsedMs = 0;
-      if (this.currFrame++ >= this.frameCount - 1) {
-        if (this.loop) {
-          this.currFrame = 0;
-        } else {
-          this.isDone = true;
-          this.currFrame = this.frameCount - 1; // Stay on last frame if done
-        }
-      }
-    }
-    return this.currFrame;
-  }
-
-  getSourceRect() {
-    const frameIndex = this.getFrameIndex();
-
+  getSourceRect(frameIndex: number): {
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+  } {
     return {
       x: frameIndex * this.frameWidth,
       y: this.rowIndex * this.frameHeight,

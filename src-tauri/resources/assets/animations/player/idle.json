@@ -6,5 +6,6 @@
   "frame_count": 2,
   "row_index": 0,
   "frame_duration_ms": 500,
-  "loop": true
+  "loop": true,
+  "uninteruptible": false
 }
