@@ -46,4 +46,18 @@ export class AnimPlayer {
     }
     return this.data!.getSourceRect(this.getFrameIndex());
   }
+
+  getImage(): HTMLImageElement {
+    if (!this.data) {
+      throw new Error("No animation data set");
+    }
+    return this.data!.getImage();
+  }
+
+  setLatestAnimData(data: AnimData): void {
+    if (this.data !== data) {
+      this.data = data;
+      this.reset();
+    }
+  }
 }

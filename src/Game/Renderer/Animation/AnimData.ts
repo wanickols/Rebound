@@ -40,4 +40,8 @@ export class AnimData {
       h: this.frameHeight,
     };
   }
+
+  getImage(): HTMLImageElement {
+    return this.image;
+  }
 }

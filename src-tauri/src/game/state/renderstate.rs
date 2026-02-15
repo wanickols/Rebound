@@ -4,6 +4,7 @@ use crate::game::state::{entityid::EntityId, Kind, Shape, State};
 
 #[derive(Serialize, serde::Deserialize, Clone, Debug)]
 pub struct RenderState {
+    pub id: u32,
     pub x: f32,
     pub y: f32,
     pub vx: f32,
@@ -20,6 +21,7 @@ pub struct RenderState {
 impl From<&State> for RenderState {
     fn from(state: &State) -> Self {
         Self {
+            id: state.entity_id.0,
             x: state.physics_state.pos.x,
             y: state.physics_state.pos.y,
             vx: state.physics_state.vel.x,

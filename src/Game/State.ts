@@ -19,6 +19,7 @@ export type Shape =
 
 export class State {
   constructor(
+    public id: number,
     public x: number,
     public y: number,
     public vx: number,

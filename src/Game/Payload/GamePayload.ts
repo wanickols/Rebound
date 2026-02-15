@@ -12,6 +12,7 @@ export class GamePayload {
   static from(obj: any): GamePayload {
     const states = obj.render_states.map((s: any, _i: number) => {
       return new State(
+        s.id,
         s.x,
         s.y,
         s.vx,

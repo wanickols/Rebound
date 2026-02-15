@@ -97,7 +97,7 @@ export class GameRenderer {
 
     if (anim) {
       this.handleAnimPlayers(s, anim, deltaMs);
-      this.drawAnimated(anim, w, h, x, y);
+      this.drawAnimated(s.id, w, h, x, y);
       return;
     }
 
@@ -182,9 +182,12 @@ export class GameRenderer {
   }
 
   // --- Animation Handling ---
-  private drawAnimated(anim: any, w: number, h: number, x: number, y: number) {
-    const sourceRect = anim.getSourceRect();
-    const sprite = anim.image;
+  private drawAnimated(id: number, w: number, h: number, x: number, y: number) {
+    const player = this.animPlayers.get(id);
+    if (!player) return;
+
+    const sourceRect = player.getSourceRect();
+    const sprite = player.getImage();
     //console.log("Drawing animated sprite frame:", sourceRect);
 
     this.ctx.drawImage(
