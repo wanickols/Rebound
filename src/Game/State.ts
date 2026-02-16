@@ -26,6 +26,7 @@ export class State {
     public vy: number,
     public shape: Shape,
     public is_holding: boolean,
+    public is_held: boolean,
     public animation_state: AnimationState,
     public angle: number,
     public is_static: boolean,

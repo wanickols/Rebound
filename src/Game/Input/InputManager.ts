@@ -106,8 +106,11 @@ export class InputManager {
       },
     };
 
-    this.isShooting = pad.buttons[SHOULDER.RIGHT_TRIGGER];
-
+    if (this.lastInput.get(playerId)?.buttons.grab !== frame.buttons.grab) {
+      this.isShooting = true;
+    } else {
+      this.isShooting = false;
+    }
     // Compare to last frame
     const lastFrame = this.lastInput.get(playerId);
     if (lastFrame && isInputFrameEqual(lastFrame, frame)) {

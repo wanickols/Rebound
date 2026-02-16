@@ -55,9 +55,10 @@ export class AnimPlayer {
   }
 
   setLatestAnimData(data: AnimData): void {
-    if (this.data !== data) {
+    if (this.data !== data || this.isDone) {
       this.data = data;
       this.reset();
     }
+    this.elapsedMs;
   }
 }

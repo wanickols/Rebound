@@ -19,6 +19,7 @@ export class GamePayload {
         s.vy,
         s.shape,
         s.is_holding,
+        s.is_held,
         AnimationState.Idle,
         s.angle,
         s.is_static,

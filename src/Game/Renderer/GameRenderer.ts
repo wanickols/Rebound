@@ -136,8 +136,8 @@ export class GameRenderer {
   }
 
   private updateHolding(s: State) {
-    if (s.kind != "Player") return;
-    if (s.is_holding) {
+    if (s.kind != "Ball") return;
+    if (s.is_held) {
       if (!this.confirmedHolding && this.holdingTimeout === null) {
         console.log("Holding confirmed");
         this.holdingTimeout = window.setTimeout(() => {
