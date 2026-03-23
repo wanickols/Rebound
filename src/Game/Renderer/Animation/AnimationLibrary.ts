@@ -1,7 +1,6 @@
 import { AnimationState, Kind } from "@/Game/State";
 import { AnimData } from "./AnimData";
-import { parseKind, parseAnimationState } from "./animutil";
-import { convertFileSrc, invoke } from "@tauri-apps/api/core";
+import { convertFileSrc } from "@tauri-apps/api/core";
 
 class AnimationLibrary {
   private animations = new Map<Kind, Map<AnimationState, AnimData>>();

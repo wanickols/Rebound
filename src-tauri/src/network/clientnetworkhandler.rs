@@ -1,16 +1,15 @@
-use std::{collections::btree_map, net::SocketAddr, time::Duration};
+use std::{net::SocketAddr, time::Duration};
 
-use tauri::http::Request;
 use tokio::{
     sync::mpsc::{UnboundedReceiver, UnboundedSender},
     time,
 };
 
 use crate::network::{
-    clientid::{self, ClientId},
+    clientid::ClientId,
     clientrequest::{ClientMessage, ClientRequest},
     serverevent::ServerEvent,
-    socketmanager::{self, SocketData},
+    socketmanager::SocketData,
 };
 
 pub struct ClientNetworkHandler {

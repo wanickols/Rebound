@@ -9,8 +9,6 @@ use crate::network::clientrequest::ClientRequest;
 use crate::network::serverevent::ServerEvent;
 use crate::startup::startup::{ManagedSenders, StartupManager};
 
-use std::fs;
-use std::path::Path;
 use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Manager};
 

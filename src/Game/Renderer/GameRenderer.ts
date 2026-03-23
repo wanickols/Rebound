@@ -15,7 +15,6 @@ export class GameRenderer {
 
   private confirmedHolding = false;
   private holdingTimeout: number | null = null;
-  private readonly HOLD_CONFIRM_MS = 100;
 
   constructor(
     ctx: CanvasRenderingContext2D,
@@ -214,7 +213,7 @@ export class GameRenderer {
 
   // --- SPRITE DRAWING if no Anim ---
   private drawSprite(
-    s: State,
+    _s: State,
     sprite: HTMLImageElement,
     w: number,
     h: number,
