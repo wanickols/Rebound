@@ -23,7 +23,10 @@
       "csp": "default-src 'self'; frame-src 'self' asset: http://asset.localhost; style-src 'self' 'unsafe-inline'; script-src 'self'; ",
       "assetProtocol": {
         "enable": true,
-        "scope": ["resources/assets/animations/**/*"]
+        "scope": [
+          "resources/assets/animations/**/*",
+          "resources/assets/audio/**/*"
+        ]
       }
     }
   },
@@ -37,6 +40,9 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": ["resources/assets/animations/**/*"]
+    "resources": [
+      "resources/assets/animations/**/*",
+      "resources/assets/audio/**/*"
+    ]
   }
 }

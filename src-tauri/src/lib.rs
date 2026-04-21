@@ -96,6 +96,27 @@ fn list_animation_folders(app: AppHandle) -> Result<Vec<String>, String> {
     Ok(dirs)
 }
 
+// src-tauri
+#[tauri::command]
+fn list_audio_files(path: String) -> Vec<String> {
+    let mut files = vec![];
+
+    for entry in std::fs::read_dir(path).unwrap() {
+        let entry = entry.unwrap();
+        let path = entry.path();
+
+        if path.is_file() {
+            if let Some(ext) = path.extension() {
+                if ext == "ogg" || ext == "wav" {
+                    files.push(path.to_string_lossy().to_string());
+                }
+            }
+        }
+    }
+
+    files
+}
+
 #[tauri::command]
 fn list_files(path: String) -> Result<Vec<String>, String> {
     let entries = std::fs::read_dir(&path).map_err(|e| e.to_string())?;
@@ -145,6 +166,7 @@ pub async fn run() -> std::io::Result<()> {
             join_game,
             end_game,
             list_animation_folders,
+            list_audio_files,
             list_files,
             quit_game,
         ])

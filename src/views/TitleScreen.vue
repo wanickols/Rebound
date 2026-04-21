@@ -3,6 +3,8 @@ import { useRouter } from "vue-router";
 const router = useRouter();
 import { exit } from "@tauri-apps/plugin-process";
 import { invoke } from "@tauri-apps/api/core";
+import { onMounted } from "vue";
+import { audio } from "@/Game/Audio/AudioManager";
 
 function onHost() {
   router.push("/gameSetup");
@@ -23,6 +25,12 @@ async function onQuit() {
   console.log("Quit pressed");
   await exit(1);
 }
+
+onMounted(async () => {
+  await audio.init("resources/assets/audio");
+
+  audio.playMusic("lobby"); //nonexistent yet
+});
 </script>
 
 <template>

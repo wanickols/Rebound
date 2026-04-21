@@ -152,9 +152,6 @@ export class GameRenderer {
         this.holdingTimeout = null;
       }, 50);
     }
-    console.log(
-      `Holding: ${s.is_holding}, Confirmed: ${this.confirmedHolding}, Timeout: ${this.holdingTimeout}`,
-    );
   }
 
   // Compute position & dimensions based on shape
