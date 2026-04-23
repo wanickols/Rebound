@@ -1,5 +1,5 @@
 use crate::{
-    game::{gamepayload::GamePayload, state::entityid::EntityId},
+    game::{frontend::gamepayload::GamePayload, state::entityid::EntityId},
     network::clientid::ClientId,
 };
 

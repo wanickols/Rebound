@@ -3,7 +3,7 @@ mod network;
 mod startup;
 
 use crate::game::gamemanager::GameManager;
-use crate::game::gamepayload::GamePayload;
+use crate::game::frontend::gamepayload::GamePayload;
 
 use crate::network::clientrequest::ClientRequest;
 use crate::network::serverevent::ServerEvent;
@@ -192,7 +192,9 @@ fn start_game_loop(gm: Arc<Mutex<GameManager>>) {
                 let mut gm = gm.lock().unwrap();
                 gm.update(); // apply input & physics + emit state
 
-                let payload = GamePayload::from(&*gm);
+                let mut payload = GamePayload::from(&*gm);
+                payload.fx_events = gm.drain_fx_events();
+
                 if let Some(sender) = gm.snapshot_tx.as_ref() {
                     let _ = sender.send(ServerEvent::WorldSnapshot { snapshot: payload });
                 }

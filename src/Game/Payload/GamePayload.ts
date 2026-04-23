@@ -1,4 +1,5 @@
 import { AnimationState, State } from "../State";
+import { FxEvent } from "./FxEvent";
 import { GamePhase } from "./GamePhase";
 import { ScoreManager } from "./ScoreManager";
 
@@ -7,6 +8,7 @@ export class GamePayload {
     public states: State[],
     public score_manager: ScoreManager,
     public phase: GamePhase,
+    public fx_events: FxEvent[],
   ) {}
 
   static from(obj: any): GamePayload {
@@ -31,6 +33,7 @@ export class GamePayload {
 
     const score_manager = ScoreManager.from(obj.score_manager);
     const phase = GamePhase.from(obj.game_phase);
-    return new GamePayload(states, score_manager, phase);
+    const fx_events = obj.fx_events as FxEvent[];
+    return new GamePayload(states, score_manager, phase, fx_events);
   }
 }

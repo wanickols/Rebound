@@ -1,4 +1,5 @@
 use crate::game::eventqueue::{EventQueue, GameEvent};
+use crate::game::frontend::fxevent::FxEvent;
 use crate::game::input::InputFrame;
 use crate::game::physics::Physics;
 use crate::game::scoremanager::{ScoreManager, Team};
@@ -29,6 +30,7 @@ pub struct GameManager {
     pub client_request_rx: Option<UnboundedReceiver<(ClientRequest, ClientId)>>,
     pub phase: GamePhase,
     pub event_queue: EventQueue,
+    fx_events: Vec<FxEvent>,
     pub score_manager: ScoreManager,
     pub spawn_manager: SpawnManager,
 }
@@ -60,6 +62,7 @@ impl GameManager {
             client_request_rx: None,
             phase: GamePhase::Waiting,
             event_queue: EventQueue::new(),
+            fx_events: Vec::new(),
             score_manager: score_manager,
             spawn_manager: SpawnManager::new(width, height),
         };
@@ -137,12 +140,9 @@ impl GameManager {
         //self.update_player_list();
     }
 
-    // fn update_player_list(&self) {
-    //     let payload = self.world.player_list.clone();
-    //     if let Err(err) = self.app.emit("player-list", payload) {
-    //         eprintln!("Failed to emit player-list: {}", err);
-    //     }
-    // }
+    pub fn drain_fx_events(&mut self) -> Vec<FxEvent> {
+        std::mem::take(&mut self.fx_events)
+    }
 
     pub fn update(&mut self) {
         //Check for network input
