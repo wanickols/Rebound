@@ -12,4 +12,12 @@ export class FxEventBus {
   subscribe(fn: (e: FxEvent) => void) {
     this.listeners.push(fn);
   }
+
+  unsubscribe(fn?: (e: FxEvent) => void) {
+    if (fn) {
+      this.listeners = this.listeners.filter((l) => l !== fn);
+    } else {
+      this.listeners = [];
+    }
+  }
 }

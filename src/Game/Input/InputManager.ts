@@ -8,6 +8,7 @@ import {
   Vec2,
 } from "./InputFrame";
 import { sendClientRequest } from "./ClientRequest";
+import { reactive } from "vue";
 
 export type PlayerId = number;
 
@@ -120,6 +121,8 @@ export class InputManager {
 
     this.lastInput.set(playerId, frame);
 
+    inputState.frame = frame;
+
     sendClientRequest({
       type: "Input",
       entity_id: playerId,
@@ -147,3 +150,7 @@ export class InputManager {
     this.players.clear();
   }
 }
+
+export const inputState = reactive({
+  frame: null as InputFrame | null,
+});

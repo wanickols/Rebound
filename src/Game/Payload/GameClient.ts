@@ -1,7 +1,7 @@
 import { ref } from "vue";
 import { GamePayload } from "./GamePayload";
 import { listen } from "@tauri-apps/api/event";
-import { FxEventBus } from "./FxEventBUs";
+import { FxEventBus } from "./FxEventBus";
 
 class GameClient {
   state = ref<GamePayload | null>(null);

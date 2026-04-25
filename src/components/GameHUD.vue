@@ -5,10 +5,13 @@ import { ControllerManager, GamepadData } from "@/Game/Input/ControllerManager";
 import { InputManager } from "@/Game/Input/InputManager";
 import ScoreCounter from "./ScoreCounter.vue";
 import GameCanvas from "@/components/GameCanvas.vue";
+import { gameClient } from "@/Game/Payload/GameClient";
+import { AudioSystem } from "@/Game/Audio/AudioSystem";
 
 const controllerManager = ref<ControllerManager | null>(null);
 //const keyboardManager = new KeyboardManager();
 const inputManager = new InputManager();
+const audioSystem = new AudioSystem(gameClient.fxEventBus);
 
 const POLL_INTERVAL = 60; // ms, adjust if needed
 let intervalId: number;
@@ -19,6 +22,8 @@ onMounted(() => {
 
   bus.on("controllerConnected", onControllerAvailable);
   bus.on("controllerDisconnected", onControllerRemoved);
+
+  audioSystem; // Ensure audio system is initialized
 
   intervalId = window.setInterval(() => {
     controllerManager.value?.pollGamepads();

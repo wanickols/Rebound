@@ -1,7 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onUnmounted, watch } from "vue";
-import { onMounted } from "vue";
-import { audio } from "@/Game/Audio/AudioManager";
+import { ref, computed, watch } from "vue";
 import { gameClient } from "@/Game/Payload/GameClient";
 
 //Score
@@ -26,26 +24,6 @@ watch(
   },
   { immediate: true },
 );
-
-/// Listen for score updates from the game client
-let unsubscribe: (() => void) | undefined;
-
-onMounted(() => {
-  gameClient.fxEventBus.subscribe((event) => {
-    if (event.type === "GoalScored") {
-      playSound();
-      //playAnimation(event.team_id);
-    }
-  });
-});
-
-function playSound() {
-  audio.playEffect("goal");
-}
-
-onUnmounted(() => {
-  unsubscribe?.();
-});
 </script>
 
 <template>
