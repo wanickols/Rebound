@@ -1,5 +1,5 @@
 import { AnimationState, State } from "../State";
-import { FxEvent } from "./FxEvent";
+import { FxEvent, normalizeFxEvent } from "./FxEvent";
 import { GamePhase } from "./GamePhase";
 import { ScoreManager } from "./ScoreManager";
 
@@ -33,7 +33,7 @@ export class GamePayload {
 
     const score_manager = ScoreManager.from(obj.score_manager);
     const phase = GamePhase.from(obj.game_phase);
-    const fx_events = obj.fx_events as FxEvent[];
+    const fx_events = obj.fx_events.map(normalizeFxEvent);
     return new GamePayload(states, score_manager, phase, fx_events);
   }
 }

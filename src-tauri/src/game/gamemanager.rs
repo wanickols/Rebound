@@ -162,6 +162,7 @@ impl GameManager {
                     }
                     self.spawn_manager.reset_states(&mut self.world);
                     self.score_manager.enable_score();
+                    self.fx_events.push(FxEvent::GoalScored { team_id });
                 }
                 GameEvent::TryGrab { player_id } => {
                     if let Some(ball_id) = self.spawn_manager.get_ball_id() {

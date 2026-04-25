@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, onMounted, onUnmounted, watch } from "vue";
 import { GamePayload } from "@/Game/Payload/GamePayload";
-import { listen } from "@tauri-apps/api/event";
 import CountdownClock from "@/components/CountdownClock.vue";
 import HostLobby from "@/components/HostLobby.vue";
 import GameHUD from "@/components/GameHUD.vue";
 import ClientLobby from "@/components/ClientLobby.vue";
+import { gameClient } from "@/Game/Payload/GameClient";
 
 const phase = ref<ReturnType<typeof GamePayload.from>["phase"] | null>(null);
 
@@ -13,11 +13,22 @@ defineProps<{
   role: "host" | "client";
 }>();
 
-onMounted(async () => {
-  await listen<GamePayload>("game-state", (event) => {
-    const payload = GamePayload.from(event.payload);
+onMounted(() => {
+  gameClient.start();
+});
+
+watch(
+  () => gameClient.state.value,
+  (payload) => {
+    if (!payload) return;
+
     phase.value = payload.phase;
-  });
+  },
+  { immediate: true },
+);
+
+onUnmounted(() => {
+  gameClient.stop();
 });
 </script>
 

@@ -1,5 +1,3 @@
-use rand::Rng;
-
 pub struct Util();
 
 impl Util {
