@@ -3,15 +3,18 @@ const GAME_HEIGHT = 180;
 import { spriteLibrary } from "./SpriteLibrary";
 import { AnimationState, State } from "../State";
 import { animationLibrary } from "./Animation/AnimationLibrary";
-import { InputManager } from "../Input/InputManager";
+
 import { AnimPlayer } from "./Animation/AnimPlayer";
+import { InputEventBus } from "../Input/InputEventBus";
 
 export class GameRenderer {
   private ctx: CanvasRenderingContext2D;
   private canvas: HTMLCanvasElement;
   private states: State[] = [];
   private rafId: number | null = null;
-  private inputManager: InputManager;
+  private inputBus: InputEventBus; ///TODO: animation will be triggered by bus
+
+  ///TODO - gonna have backend animationstate handle idle and wlaking, so renderer becomes reactive and dumb
 
   private confirmedHolding = false;
   private holdingTimeout: number | null = null;
@@ -19,11 +22,11 @@ export class GameRenderer {
   constructor(
     ctx: CanvasRenderingContext2D,
     canvas: HTMLCanvasElement,
-    inputManager: InputManager,
+    inputBus: InputEventBus,
   ) {
     this.ctx = ctx;
     this.canvas = canvas;
-    this.inputManager = inputManager;
+    this.inputBus = inputBus;
     animationLibrary
       .loadAllAnimations()
       .then(() => {
@@ -91,7 +94,7 @@ export class GameRenderer {
     this.applyRotation(s.angle, x + w / 2, y + h / 2);
 
     this.updateHolding(s);
-    const state = this.determineAnimationState(s);
+    const state = AnimationState.Idle; //for now
     const anim = animationLibrary.get(s.kind, state);
 
     if (anim) {
@@ -120,18 +123,6 @@ export class GameRenderer {
     player.setLatestAnimData(anim);
 
     player.update(deltaMs);
-  }
-
-  private determineAnimationState(s: State): AnimationState {
-    let shooting = this.inputManager.isShooting;
-    if (shooting && this.confirmedHolding) {
-      return AnimationState.Shooting;
-    }
-
-    if (s.vx !== 0 || s.vy !== 0) {
-      return AnimationState.Moving;
-    }
-    return AnimationState.Idle;
   }
 
   private updateHolding(s: State) {

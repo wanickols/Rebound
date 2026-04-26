@@ -7,11 +7,14 @@ import ScoreCounter from "./ScoreCounter.vue";
 import GameCanvas from "@/components/GameCanvas.vue";
 import { gameClient } from "@/Game/Payload/GameClient";
 import { AudioSystem } from "@/Game/Audio/AudioSystem";
+import { InputEventBus } from "@/Game/Input/InputEventBus";
 
 const controllerManager = ref<ControllerManager | null>(null);
 //const keyboardManager = new KeyboardManager();
-const inputManager = new InputManager();
-const audioSystem = new AudioSystem(gameClient.fxEventBus);
+
+const inputBus = new InputEventBus();
+const inputManager = new InputManager(inputBus);
+const audioSystem = new AudioSystem(gameClient.fxEventBus, inputBus);
 
 const POLL_INTERVAL = 60; // ms, adjust if needed
 let intervalId: number;

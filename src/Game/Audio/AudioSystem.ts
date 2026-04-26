@@ -1,32 +1,41 @@
-import { InputFrame } from "../Input/InputFrame";
-import { inputState } from "../Input/InputManager";
+import { InputEventBus, InputEvent } from "../Input/InputEventBus";
+import { FxEvent } from "../Payload/FxEvent";
 import { FxEventBus } from "../Payload/FxEventBus";
 import { audio } from "./AudioManager";
-import { watch } from "vue";
 
 export class AudioSystem {
   private stop?: () => void;
   fxb: FxEventBus;
+  inputBus: InputEventBus;
 
-  constructor(fxBus: FxEventBus) {
+  constructor(fxBus: FxEventBus, inputBus: InputEventBus) {
     this.fxb = fxBus;
+    this.inputBus = inputBus;
+
+    // Backend events
     this.fxb.subscribe((e) => {
-      if (e.type === "GoalScored") {
-        audio.playEffect("goal");
-      }
+      this.handleFxEvent(e);
     });
 
-    this.stop = watch(
-      () => inputState.frame,
-      (frame) => this.handleFrame(frame),
-    );
+    // Frontend input events
+    this.inputBus.subscribe((e) => {
+      this.handleInputEvent(e);
+    });
   }
 
-  private handleFrame(frame: InputFrame | null) {
-    if (!frame) return;
+  handleFxEvent(e: FxEvent) {
+    switch (e.type) {
+      case "GoalScored":
+        audio.playEffect("goal");
+        break;
+    }
+  }
 
-    if (frame.buttons.grab) {
-      audio.playEffect("kick");
+  handleInputEvent(e: InputEvent) {
+    switch (e.type) {
+      case "kick":
+        audio.playEffect("kick");
+        break;
     }
   }
 
