@@ -1,4 +1,4 @@
-import { Kind, AnimationState } from "@/Game/State";
+import { Kind, ActionState } from "@/Game/State";
 
 function parseKind(value: string): Kind {
   if (!Object.values(Kind).includes(value as Kind)) {
@@ -7,10 +7,10 @@ function parseKind(value: string): Kind {
   return value as Kind;
 }
 
-function parseAnimationState(value: string): AnimationState {
-  if (!Object.values(AnimationState).includes(value as AnimationState)) {
+function parseAnimationState(value: string): ActionState {
+  if (!Object.values(ActionState).includes(value as ActionState)) {
     throw new Error(`Invalid AnimationState in meta.json: ${value}`);
   }
-  return value as AnimationState;
+  return value as ActionState;
 }
 export { parseKind, parseAnimationState };

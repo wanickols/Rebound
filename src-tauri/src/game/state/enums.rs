@@ -10,11 +10,10 @@ pub enum Kind {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
-pub enum AnimationState {
+pub enum ActionState {
     Idle,
     Moving,
     Dashing,
-    Shooting,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug)]

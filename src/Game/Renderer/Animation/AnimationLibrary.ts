@@ -1,10 +1,10 @@
-import { AnimationState, Kind } from "@/Game/State";
+import { ActionState, Kind } from "@/Game/State";
 import { AnimData } from "./AnimData";
 import { convertFileSrc } from "@tauri-apps/api/core";
 
 class AnimationLibrary {
-  private animations = new Map<Kind, Map<AnimationState, AnimData>>();
-  private lastAnimation = new Map<Kind, AnimationState>();
+  private animations = new Map<Kind, Map<ActionState, AnimData>>();
+  private lastAnimation = new Map<Kind, ActionState>();
   rootPath = "resources/assets/animations";
   private loaded = false;
 
@@ -19,7 +19,7 @@ class AnimationLibrary {
         if (!kindMap) continue;
 
         this.animations.set(kind, kindMap);
-        this.lastAnimation.set(kind, AnimationState.Idle);
+        this.lastAnimation.set(kind, ActionState.Idle);
       } catch (e) {
         console.log(`Failed to load animations for kind ${kind}:`, e);
       }
@@ -28,8 +28,8 @@ class AnimationLibrary {
 
   private async loadAnimation(
     kind: Kind,
-  ): Promise<Promise<Map<AnimationState, AnimData>> | null> {
-    const kindMap = new Map<AnimationState, AnimData>();
+  ): Promise<Promise<Map<ActionState, AnimData>> | null> {
+    const kindMap = new Map<ActionState, AnimData>();
 
     // Load the spritesheet once per kind
     const spritePath = convertFileSrc(
@@ -58,7 +58,7 @@ class AnimationLibrary {
     }
 
     // Iterate through each AnimationState
-    for (const state of Object.values(AnimationState)) {
+    for (const state of Object.values(ActionState)) {
       await this.loadState(kind, state, image).then((anim) => {
         if (anim) {
           kindMap.set(state, anim);
@@ -71,7 +71,7 @@ class AnimationLibrary {
 
   private async loadState(
     kind: Kind,
-    state: AnimationState,
+    state: ActionState,
     image: HTMLImageElement,
   ): Promise<AnimData | undefined> {
     try {
@@ -105,7 +105,7 @@ class AnimationLibrary {
     return res.json();
   }
 
-  get(kind: Kind, state: AnimationState): AnimData | undefined {
+  get(kind: Kind, state: ActionState): AnimData | undefined {
     return this.animations.get(kind)?.get(state);
   }
 

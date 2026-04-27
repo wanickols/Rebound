@@ -1,4 +1,4 @@
-import { AnimationState, State } from "../State";
+import { State } from "../State";
 import { FxEvent, normalizeFxEvent } from "./FxEvent";
 import { GamePhase } from "./GamePhase";
 import { ScoreManager } from "./ScoreManager";
@@ -19,12 +19,14 @@ export class GamePayload {
         s.y,
         s.vx,
         s.vy,
+        s.angle,
         s.shape,
+
+        s.action_state,
         s.is_holding,
         s.is_held,
-        AnimationState.Idle,
-        s.angle,
         s.is_static,
+
         s.kind,
         s.player_id,
         s.team_id,

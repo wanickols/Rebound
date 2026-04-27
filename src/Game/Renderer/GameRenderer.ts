@@ -1,7 +1,7 @@
 const GAME_WIDTH = 320;
 const GAME_HEIGHT = 180;
 import { spriteLibrary } from "./SpriteLibrary";
-import { AnimationState, State } from "../State";
+import { ActionState, State } from "../State";
 import { animationLibrary } from "./Animation/AnimationLibrary";
 
 import { AnimPlayer } from "./Animation/AnimPlayer";
@@ -94,8 +94,11 @@ export class GameRenderer {
     this.applyRotation(s.angle, x + w / 2, y + h / 2);
 
     this.updateHolding(s);
-    const state = AnimationState.Idle; //for now
-    const anim = animationLibrary.get(s.kind, state);
+
+    if (s.action_state != ActionState.Idle) {
+      console.log(s.action_state);
+    }
+    const anim = animationLibrary.get(s.kind, s.action_state);
 
     if (anim) {
       this.handleAnimPlayers(s, anim, deltaMs);

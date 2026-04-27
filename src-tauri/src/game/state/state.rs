@@ -14,9 +14,8 @@ use crate::game::{
 #[derive(Clone)]
 pub struct State {
     pub physics_state: PhysicsState,
-    pub animation_state: AnimationState,
+    pub action_state: ActionState,
     pub is_static: bool,
-    //pub is_enabled: bool,
     pub is_trigger: bool,
     pub is_alive: bool,
     pub kind: Kind,
@@ -36,6 +35,7 @@ impl State {
         }
 
         self.physics_state.tick(dt);
+        self.determine_action_state();
 
         if let Some(ttl) = self.time_to_live {
             //println!("dying counter: {}", ttl);
@@ -65,6 +65,15 @@ impl State {
         } else {
             println!("Entity {:?} died without an owner", self.entity_id);
         }
+    }
+
+    fn determine_action_state(&mut self) {
+        self.action_state =
+            if self.physics_state.vel.x.abs() > 0.1 || self.physics_state.vel.y.abs() > 0.1 {
+                ActionState::Moving
+            } else {
+                ActionState::Idle
+            };
     }
 
     pub fn handle_collision(states: &mut Vec<State>, i: usize, j: usize, events: &mut EventQueue) {
@@ -223,7 +232,7 @@ impl State {
         State {
             physics_state: PhysicsState::new(),
             is_static: false,
-            animation_state: AnimationState::Idle,
+            action_state: ActionState::Idle,
             is_trigger: false,
             is_alive: true,
             kind: Kind::Ball,
