@@ -1,32 +1,23 @@
 const GAME_WIDTH = 320;
 const GAME_HEIGHT = 180;
 import { spriteLibrary } from "./SpriteLibrary";
-import { ActionState, State } from "../State";
+import { State } from "../Backend/Payload/State";
 import { animationLibrary } from "./Animation/AnimationLibrary";
 
 import { AnimPlayer } from "./Animation/AnimPlayer";
-import { InputEventBus } from "../Input/InputEventBus";
+import { gameClient } from "../Backend/GameClient";
 
 export class GameRenderer {
   private ctx: CanvasRenderingContext2D;
   private canvas: HTMLCanvasElement;
-  private states: State[] = [];
   private rafId: number | null = null;
-  private inputBus: InputEventBus; ///TODO: animation will be triggered by bus
-
-  ///TODO - gonna have backend animationstate handle idle and wlaking, so renderer becomes reactive and dumb
 
   private confirmedHolding = false;
   private holdingTimeout: number | null = null;
 
-  constructor(
-    ctx: CanvasRenderingContext2D,
-    canvas: HTMLCanvasElement,
-    inputBus: InputEventBus,
-  ) {
+  constructor(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) {
     this.ctx = ctx;
     this.canvas = canvas;
-    this.inputBus = inputBus;
     animationLibrary
       .loadAllAnimations()
       .then(() => {
@@ -35,10 +26,6 @@ export class GameRenderer {
       .catch((err) => {
         console.error("Failed to load animations", err);
       });
-  }
-
-  updateState(states: State[]) {
-    this.states = states;
   }
 
   startRenderLoop() {
@@ -56,7 +43,7 @@ export class GameRenderer {
 
       this.clear();
       // Draw current state
-      for (const s of this.states) {
+      for (const s of gameClient.snapshot.states) {
         this.draw(s, scale, offsetX, offsetY, deltaMs);
       }
 
@@ -95,9 +82,6 @@ export class GameRenderer {
 
     this.updateHolding(s);
 
-    if (s.action_state != ActionState.Idle) {
-      console.log(s.action_state);
-    }
     const anim = animationLibrary.get(s.kind, s.action_state);
 
     if (anim) {
@@ -128,6 +112,7 @@ export class GameRenderer {
     player.update(deltaMs);
   }
 
+  //todo: idk but better lol
   private updateHolding(s: State) {
     if (s.kind != "Ball") return;
     if (s.is_held) {

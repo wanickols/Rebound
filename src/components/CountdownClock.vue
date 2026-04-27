@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import type { GamePhase } from "@/Game/Payload/GamePhase";
+import type { GamePhase } from "@/Game/Backend/GamePhase";
 
 const props = defineProps<{
   phase: GamePhase | null;
@@ -31,7 +31,9 @@ const displayNumber = computed(() => {
 <style scoped>
 .fade-scale-enter-active,
 .fade-scale-leave-active {
-  transition: opacity 0.25s ease, transform 0.6s ease;
+  transition:
+    opacity 0.25s ease,
+    transform 0.6s ease;
 }
 
 .fade-scale-enter-from {

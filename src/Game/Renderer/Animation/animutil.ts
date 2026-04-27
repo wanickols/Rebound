@@ -1,4 +1,4 @@
-import { Kind, ActionState } from "@/Game/State";
+import { Kind, ActionState } from "@/Game/Backend/Payload/State";
 
 function parseKind(value: string): Kind {
   if (!Object.values(Kind).includes(value as Kind)) {

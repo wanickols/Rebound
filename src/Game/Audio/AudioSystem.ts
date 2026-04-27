@@ -1,6 +1,6 @@
 import { InputEventBus, InputEvent } from "../Input/InputEventBus";
-import { FxEvent } from "../Payload/FxEvent";
-import { FxEventBus } from "../Payload/FxEventBus";
+import { FxEvent } from "../Backend/FxEvent";
+import { FxEventBus } from "../Backend/FxEventBus";
 import { audio } from "./AudioManager";
 
 export class AudioSystem {

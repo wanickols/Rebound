@@ -1,5 +1,5 @@
-import { State } from "../State";
-import { FxEvent, normalizeFxEvent } from "./FxEvent";
+import { State } from "./State";
+import { FxEvent, normalizeFxEvent } from "./../FxEvent";
 import { GamePhase } from "./GamePhase";
 import { ScoreManager } from "./ScoreManager";
 

@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from "vue";
-import { GamePayload } from "@/Game/Payload/GamePayload";
+import { GamePayload } from "@/Game/Backend/Payload/GamePayload";
 import CountdownClock from "@/components/CountdownClock.vue";
 import HostLobby from "@/components/HostLobby.vue";
 import GameHUD from "@/components/GameHUD.vue";
 import ClientLobby from "@/components/ClientLobby.vue";
-import { gameClient } from "@/Game/Payload/GameClient";
+import { gameClient } from "@/Game/Backend/GameClient";
 
 const phase = ref<ReturnType<typeof GamePayload.from>["phase"] | null>(null);
 
@@ -18,11 +18,11 @@ onMounted(() => {
 });
 
 watch(
-  () => gameClient.state.value,
-  (payload) => {
-    if (!payload) return;
+  () => gameClient.snapshot.phase,
+  (bphase) => {
+    if (!bphase) return;
 
-    phase.value = payload.phase;
+    phase.value = bphase;
   },
   { immediate: true },
 );

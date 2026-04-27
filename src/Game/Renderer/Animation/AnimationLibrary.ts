@@ -1,4 +1,4 @@
-import { ActionState, Kind } from "@/Game/State";
+import { ActionState, Kind } from "@/Game/Backend/Payload/State";
 import { AnimData } from "./AnimData";
 import { convertFileSrc } from "@tauri-apps/api/core";
 

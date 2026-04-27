@@ -5,7 +5,7 @@ import { ControllerManager, GamepadData } from "@/Game/Input/ControllerManager";
 import { InputManager } from "@/Game/Input/InputManager";
 import ScoreCounter from "./ScoreCounter.vue";
 import GameCanvas from "@/components/GameCanvas.vue";
-import { gameClient } from "@/Game/Payload/GameClient";
+import { gameClient } from "@/Game/Backend/GameClient";
 import { AudioSystem } from "@/Game/Audio/AudioSystem";
 import { InputEventBus } from "@/Game/Input/InputEventBus";
 
@@ -57,6 +57,6 @@ function onControllerRemoved(index: number) {
 </script>
 
 <template>
-  <GameCanvas :inputManager="inputManager" />
+  <GameCanvas />
   <ScoreCounter />
 </template>
