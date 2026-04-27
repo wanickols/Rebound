@@ -92,6 +92,7 @@ impl SpawnManager {
                 continue;
             }
 
+            state.action_state = crate::game::state::enums::ActionState::Idle;
             match state.kind {
                 Kind::Ball => {
                     if let Some((bx, by)) = self.ball_start {

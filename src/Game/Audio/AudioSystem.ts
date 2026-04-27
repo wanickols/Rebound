@@ -1,10 +1,12 @@
 import { InputEventBus, InputEvent } from "../Input/InputEventBus";
-import { FxEvent } from "../Backend/FxEvent";
+import { watch } from "vue";
 import { FxEventBus } from "../Backend/FxEventBus";
 import { audio } from "./AudioManager";
-
+import { FxEvent } from "../Backend/FxEvent";
+import { gameClient } from "../Backend/GameClient";
+import { ActionState } from "../Backend/Payload/State";
 export class AudioSystem {
-  private stop?: () => void;
+  private stopWatch?: () => void;
   fxb: FxEventBus;
   inputBus: InputEventBus;
 
@@ -21,6 +23,25 @@ export class AudioSystem {
     this.inputBus.subscribe((e) => {
       this.handleInputEvent(e);
     });
+
+    this.stopWatch = watch(
+      () => gameClient.snapshot.states,
+      (states) => {
+        let isMoving = false;
+        for (const s of states) {
+          if (s.action_state === ActionState.Moving) {
+            isMoving = true;
+            break;
+          }
+        }
+        if (isMoving) {
+          audio.startLoop("step");
+        } else {
+          audio.stopLoop("step");
+        }
+      },
+      { deep: false },
+    );
   }
 
   handleFxEvent(e: FxEvent) {
@@ -40,7 +61,7 @@ export class AudioSystem {
   }
 
   destroy() {
-    this.stop?.();
+    this.stopWatch?.();
     this.fxb.unsubscribe();
   }
 }
