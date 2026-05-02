@@ -1,85 +1,114 @@
 import AudioLibrary from "./AudioLibrary";
 
+export enum AudioChannel {
+  Music,
+  Footsteps,
+  SFX,
+}
+
+type PlayOptions = {
+  volume?: number;
+  loop?: boolean;
+  tag?: AudioChannel; // for tracking (loops, music, etc.)
+};
+
 class AudioManager {
   private library!: AudioLibrary;
   private initialized = false;
 
-  private loops = new Map<string, HTMLAudioElement>();
-  private currentMusic: HTMLAudioElement | null = null;
+  private channels = new Map<
+    AudioChannel,
+    { source: AudioBufferSourceNode; gain: GainNode }
+  >();
+  private ctx = new AudioContext();
+
+  getContext() {
+    return this.ctx;
+  }
 
   async init(rootPath: string) {
     if (this.initialized) return;
 
     this.library = new AudioLibrary();
-    await this.library.load(rootPath);
+    await this.library.load(rootPath, this.ctx);
 
     this.initialized = true;
   }
 
-  playEffect(name: string) {
-    const list = this.library.effects.get(name);
-    console.log("Effect list for", name, ":", list);
-    if (!list) return;
+  play(
+    name: string,
+    opts?: {
+      volume?: number;
+      loop?: boolean;
+      channel?: AudioChannel;
+    },
+  ) {
+    const buffer = this.getBuffer(name);
+    if (!buffer) return;
 
-    console.log(`Playing effect: ${name}`);
-    const audio = list[Math.floor(Math.random() * list.length)];
-    const sound = audio.cloneNode(true) as HTMLAudioElement;
-    sound.play();
+    const source = this.ctx.createBufferSource();
+    const gain = this.ctx.createGain();
+
+    source.buffer = buffer;
+    source.loop = !!opts?.loop;
+    gain.gain.value = opts?.volume ?? 1;
+
+    source.connect(gain);
+    gain.connect(this.ctx.destination);
+
+    const now = this.ctx.currentTime;
+
+    // If channel exists, replace it
+    if (opts?.channel !== undefined) {
+      const existing = this.channels.get(opts.channel);
+      if (existing) {
+        existing.gain.gain.linearRampToValueAtTime(0, now + 0.05);
+        existing.source.stop(now + 0.05);
+      }
+
+      this.channels.set(opts.channel, { source, gain });
+    }
+
+    source.start();
+  }
+
+  getBuffer(name: string): AudioBuffer | null {
+    const buffers =
+      this.library.effects.get(name) ??
+      (this.library.music.get(name) && [this.library.music.get(name)!]);
+
+    if (!buffers || buffers.length === 0) return null;
+
+    return buffers[Math.floor(Math.random() * buffers.length)];
+  }
+
+  playEffect(name: string, volume = 1) {
+    this.play(name, { volume });
   }
 
   playMusic(name: string) {
-    const track = this.library.music.get(name);
-    if (!track) return;
-
-    // stop previous music
-    if (this.currentMusic) {
-      this.currentMusic.pause();
-      this.currentMusic.currentTime = 0;
-    }
-
-    const instance = track.cloneNode(true) as HTMLAudioElement;
-    instance.loop = true;
-    instance.play();
-
-    this.currentMusic = instance;
+    this.stop(AudioChannel.Music); // ensures only one track
+    this.play(name, { volume: 1, loop: true, channel: AudioChannel.Music });
   }
 
-  stopMusic() {
-    if (!this.currentMusic) return;
-
-    this.currentMusic.pause();
-    this.currentMusic.currentTime = 0;
-    this.currentMusic = null;
+  startLoop(name: string, channel: AudioChannel, volume = 1) {
+    this.stop(channel); // avoid duplicates
+    this.play(name, { volume, loop: true, channel: channel });
   }
 
-  startLoop(name: string) {
-    if (this.loops.has(name)) return;
-
-    const list = this.library.effects.get(name);
-    if (!list) return;
-
-    const audio = list[Math.floor(Math.random() * list.length)];
-    const instance = audio.cloneNode(true) as HTMLAudioElement;
-
-    instance.loop = true;
-    instance.play().catch((err) => {
-      if (err.name !== "AbortError") {
-        console.warn("Audio play failed:", err);
-      }
-    });
-    instance.play();
-
-    this.loops.set(name, instance);
-  }
-
-  stopLoop(name: string) {
-    const instance = this.loops.get(name);
+  stop(channel: AudioChannel) {
+    const instance = this.channels.get(channel);
     if (!instance) return;
 
-    instance.pause();
-    instance.currentTime = 0;
+    const { source, gain } = instance;
+    const now = this.ctx.currentTime;
 
-    this.loops.delete(name);
+    gain.gain.setValueAtTime(gain.gain.value, now);
+    gain.gain.linearRampToValueAtTime(0, now + 0.1);
+
+    source.stop(now + 0.1);
+
+    this.channels.delete(channel);
   }
 }
 

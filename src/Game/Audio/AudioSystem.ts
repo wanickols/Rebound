@@ -1,7 +1,7 @@
 import { InputEventBus, InputEvent } from "../Input/InputEventBus";
 import { watch } from "vue";
 import { FxEventBus } from "../Backend/FxEventBus";
-import { audio } from "./AudioManager";
+import { audio, AudioChannel } from "./AudioManager";
 import { FxEvent } from "../Backend/FxEvent";
 import { gameClient } from "../Backend/GameClient";
 import { ActionState } from "../Backend/Payload/State";
@@ -13,6 +13,7 @@ export class AudioSystem {
   constructor(fxBus: FxEventBus, inputBus: InputEventBus) {
     this.fxb = fxBus;
     this.inputBus = inputBus;
+    let lastMoving = false;
 
     // Backend events
     this.fxb.subscribe((e) => {
@@ -34,11 +35,16 @@ export class AudioSystem {
             break;
           }
         }
+
+        if (isMoving == lastMoving) return;
+
         if (isMoving) {
-          audio.startLoop("step");
+          audio.startLoop("step", AudioChannel.Footsteps, 0.5);
         } else {
-          audio.stopLoop("step");
+          audio.stop(AudioChannel.Footsteps);
         }
+
+        lastMoving = isMoving;
       },
       { deep: false },
     );

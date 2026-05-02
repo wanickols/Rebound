@@ -3,10 +3,10 @@ import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 class AudioLibrary {
   private loaded = false;
 
-  effects = new Map<string, HTMLAudioElement[]>();
-  music = new Map<string, HTMLAudioElement>();
+  effects = new Map<string, AudioBuffer[]>();
+  music = new Map<string, AudioBuffer>();
 
-  async load(rootPath: string) {
+  async load(rootPath: string, ctx: AudioContext) {
     if (this.loaded) return;
     this.loaded = true;
 
@@ -26,13 +26,16 @@ class AudioLibrary {
       const key = name.split("_")[0];
 
       const url = convertFileSrc(file);
-      const audio = new Audio(url);
+
+      const res = await fetch(url);
+      const arrayBuffer = await res.arrayBuffer();
+      const buffer = await ctx.decodeAudioData(arrayBuffer);
 
       if (!this.effects.has(key)) this.effects.set(key, []);
-      this.effects.get(key)!.push(audio);
+      this.effects.get(key)!.push(buffer);
 
       console.log(`Loaded audio: ${key} from ${url}`);
-      this.effects.get(key)!.push(audio);
+      this.effects.get(key)!.push(buffer);
     }
   }
 }
