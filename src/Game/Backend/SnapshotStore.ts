@@ -30,6 +30,10 @@ export class SnapshotStore {
     return this.payload.value?.score_manager;
   }
 
+  get lobby_state() {
+    return this.payload.value?.lobby_state;
+  }
+
   // optional: debug / inspection
   get hasData(): boolean {
     return this.payload.value !== null;

@@ -8,6 +8,8 @@ import ClientLobby from "@/components/ClientLobby.vue";
 import { gameClient } from "@/Game/Backend/GameClient";
 
 const phase = ref<ReturnType<typeof GamePayload.from>["phase"] | null>(null);
+const joinedPlayers = ref<number>(0);
+const expectedPlayers = ref<number>(0);
 
 defineProps<{
   role: "host" | "client";
@@ -23,6 +25,9 @@ watch(
     if (!bphase) return;
 
     phase.value = bphase;
+    joinedPlayers.value = gameClient.snapshot.lobby_state?.players.length || 0;
+    expectedPlayers.value =
+      gameClient.snapshot.lobby_state?.expected_players || 0;
   },
   { immediate: true },
 );
@@ -36,6 +41,9 @@ onUnmounted(() => {
   <div class="w-screen h-screen relative">
     <HostLobby v-if="phase?.type === 'Waiting' && role === 'host'" />
     <ClientLobby v-else-if="phase?.type === 'Waiting' && role === 'client'" />
+    <div v-if="phase?.type === 'Waiting'">
+      {{ joinedPlayers }} / {{ expectedPlayers }} players joined
+    </div>
     <GameHUD />
     <CountdownClock :phase="phase" />
   </div>

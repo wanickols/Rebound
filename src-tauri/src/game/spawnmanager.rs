@@ -15,7 +15,6 @@ pub const PLAYER_POSITIONS: [(f32, f32, f32); 8] = [
 pub struct SpawnManager {
     ball_start: Option<(f32, f32)>,
     ball_id: Option<EntityId>,
-    max_player_count: u8,
     pub width: f32,
     pub height: f32,
 }
@@ -26,20 +25,18 @@ impl SpawnManager {
         Self {
             ball_start: None,
             ball_id: None,
-            max_player_count: 1,
             width,
             height,
         }
     }
 
     pub fn try_add_player(&mut self, world: &mut World) -> Option<EntityId> {
-        let count = world.curr_player_count();
-        if count >= self.max_player_count.into() {
+        if world.reached_expected_player_count() {
             println!("Max players reached!");
             return None;
         }
 
-        let (x, y, angle) = PLAYER_POSITIONS[count];
+        let (x, y, angle) = PLAYER_POSITIONS[world.curr_player_count()];
         let player_id = self.add_player(world, x, y, angle);
         Some(player_id)
     }
@@ -50,7 +47,6 @@ impl SpawnManager {
 
     pub fn remove_all(&mut self, world: &mut World) {
         world.remove_all();
-        self.max_player_count = 1;
         self.ball_id = None;
     }
 
@@ -156,11 +152,6 @@ impl SpawnManager {
 
     fn add_goal(&mut self, world: &mut World, x: f32, y: f32, team_id: u8) {
         world.add_entity(State::new_goal(x, y, 30.0, 60.0, team_id));
-    }
-
-    ///Getters and Setters
-    pub fn set_player_count(&mut self, player_count: u8) {
-        self.max_player_count = player_count;
     }
 
     pub fn get_ball_id(&self) -> Option<EntityId> {

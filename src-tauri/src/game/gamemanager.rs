@@ -15,7 +15,7 @@ use std::collections::HashMap;
 use tauri::window::Color;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq)]
 pub enum GamePhase {
     Waiting,
     Countdown { time_left: f32 },
@@ -99,11 +99,19 @@ impl GameManager {
     }
 
     pub fn set_game_settings(&mut self, player_count: u8, target_score: u8) {
-        self.spawn_manager.set_player_count(player_count);
+        self.world.set_expected_player_count(player_count.into());
         self.score_manager.set_target_score(target_score);
     }
 
     pub fn start_game(&mut self) {
+        if self.phase != GamePhase::Waiting {
+            println!("Cannot start game, not in waiting phase");
+            return;
+        } else if !self.world.reached_expected_player_count() {
+            println!("Cannot start game, not enough players");
+            return;
+        }
+
         self.phase = GamePhase::Countdown { time_left: 3.0 };
         self.spawn_manager.spawn_states(&mut self.world);
     }

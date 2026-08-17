@@ -1,5 +1,6 @@
 pub mod entityid;
 pub mod enums;
+pub mod lobbyplayer;
 pub mod physicsstate;
 pub mod renderstate;
 

@@ -1,7 +1,11 @@
 use std::collections::HashMap;
 
 use crate::game::{
-    state::{entityid::EntityId, State},
+    state::{
+        entityid::EntityId,
+        lobbyplayer::{LobbyPlayer, LobbyState},
+        State,
+    },
     util::Util,
 };
 
@@ -9,7 +13,7 @@ pub struct World {
     pub entities: Vec<State>,
     entity_map: HashMap<EntityId, usize>,
 
-    pub player_list: Vec<EntityId>,
+    lobby_state: LobbyState,
 }
 
 impl World {
@@ -17,7 +21,10 @@ impl World {
         return World {
             entities: Vec::new(),
             entity_map: HashMap::new(),
-            player_list: Vec::new(),
+            lobby_state: LobbyState {
+                expected_players: 0,
+                players: Vec::new(),
+            },
         };
     }
 
@@ -30,7 +37,10 @@ impl World {
     }
 
     pub fn add_player(&mut self, state: State) {
-        self.player_list.push(state.entity_id);
+        self.lobby_state.players.push(LobbyPlayer {
+            player_id: state.entity_id,
+            team_id: state.team_id,
+        });
         self.add_entity(state);
     }
 
@@ -50,21 +60,31 @@ impl World {
 
     pub fn remove_player(&mut self, entity_id: EntityId) {
         self.remove_entity(entity_id);
-        if let Some(pos) = self.player_list.iter().position(|&id| id == entity_id) {
-            self.player_list.swap_remove(pos); // replaces with last element, no shift
+        if let Some(pos) = self
+            .lobby_state
+            .players
+            .iter()
+            .position(|player| player.player_id == entity_id)
+        {
+            self.lobby_state.players.swap_remove(pos); // replaces with last element, no shift
         }
     }
 
     pub fn remove_all(&mut self) {
         self.entities.clear();
         self.entity_map.clear();
-        self.player_list.clear();
+        self.lobby_state.players.clear();
         println!("Removed all entities");
     }
 
     pub fn remove_all_non_players(&mut self) {
         for id in self.entity_map.keys().cloned().collect::<Vec<_>>() {
-            if !self.player_list.contains(&id) {
+            if !self
+                .lobby_state
+                .players
+                .iter()
+                .any(|player| player.player_id == id)
+            {
                 self.remove_entity(id);
             }
         }
@@ -74,6 +94,7 @@ impl World {
         );
     }
 
+    //Entity Accessors
     pub fn grab_entity(&mut self, id: EntityId) -> Option<&mut State> {
         let index = self.entity_map.get(&id).copied()?; // Option<usize>
         Some(&mut self.entities[index])
@@ -90,7 +111,23 @@ impl World {
         Some(Util::two_mut(&mut self.entities, i, j))
     }
 
+    pub fn get_lobby_state(&self) -> &LobbyState {
+        &self.lobby_state
+    }
+    //Player Counts
     pub fn curr_player_count(&self) -> usize {
-        return self.player_list.len();
+        return self.lobby_state.players.len();
+    }
+
+    pub fn expected_player_count(&self) -> usize {
+        return self.lobby_state.expected_players;
+    }
+
+    pub fn set_expected_player_count(&mut self, count: usize) {
+        self.lobby_state.expected_players = count;
+    }
+
+    pub fn reached_expected_player_count(&self) -> bool {
+        return self.curr_player_count() >= self.expected_player_count();
     }
 }

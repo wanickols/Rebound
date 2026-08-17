@@ -2,6 +2,7 @@ import { State } from "./State";
 import { FxEvent, normalizeFxEvent } from "./../FxEvent";
 import { GamePhase } from "./GamePhase";
 import { ScoreManager } from "./ScoreManager";
+import { LobbyState } from "./LobbyState";
 
 export class GamePayload {
   constructor(
@@ -9,6 +10,7 @@ export class GamePayload {
     public score_manager: ScoreManager,
     public phase: GamePhase,
     public fx_events: FxEvent[],
+    public lobby_state: LobbyState,
   ) {}
 
   static from(obj: any): GamePayload {
@@ -36,6 +38,13 @@ export class GamePayload {
     const score_manager = ScoreManager.from(obj.score_manager);
     const phase = GamePhase.from(obj.game_phase);
     const fx_events = obj.fx_events.map(normalizeFxEvent);
-    return new GamePayload(states, score_manager, phase, fx_events);
+    const lobby_state = LobbyState.from(obj.lobby_state);
+    return new GamePayload(
+      states,
+      score_manager,
+      phase,
+      fx_events,
+      lobby_state,
+    );
   }
 }
