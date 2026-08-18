@@ -30,14 +30,14 @@ impl SpawnManager {
         }
     }
 
-    pub fn try_add_player(&mut self, world: &mut World) -> Option<EntityId> {
+    pub fn try_add_player(&mut self, world: &mut World, team_id: u8) -> Option<EntityId> {
         if world.reached_expected_player_count() {
             println!("Max players reached!");
             return None;
         }
 
         let (x, y, angle) = PLAYER_POSITIONS[world.curr_player_count()];
-        let player_id = self.add_player(world, x, y, angle);
+        let player_id = self.add_player(world, team_id, x, y, angle);
         Some(player_id)
     }
 
@@ -124,8 +124,8 @@ impl SpawnManager {
 
     ///Private
     //Add Functions:
-    pub fn add_player(&mut self, world: &mut World, x: f32, y: f32, angle: f32) -> EntityId {
-        let player = State::new_player(x, y, angle);
+    pub fn add_player(&mut self, world: &mut World, team_id: u8, x: f32, y: f32, angle: f32) -> EntityId {
+        let player = State::new_player(team_id, x, y, angle);
 
         let id = player.entity_id;
         println!("Added player with ID: {}", id.0);

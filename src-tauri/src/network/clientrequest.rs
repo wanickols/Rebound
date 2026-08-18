@@ -6,7 +6,9 @@ use crate::{
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(tag = "type")]
 pub enum ClientRequest {
-    Add,
+    Add {
+        team_id: u8,
+    },
     Joined,
     Idle,
     Remove {

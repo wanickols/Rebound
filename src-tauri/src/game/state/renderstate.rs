@@ -1,8 +1,8 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::game::state::{entityid::EntityId, enums::ActionState, Kind, Shape, State};
 
-#[derive(Serialize, serde::Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct RenderState {
     pub id: u32,
     pub x: f32,

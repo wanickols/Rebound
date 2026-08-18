@@ -66,6 +66,7 @@ export class InputManager {
 
     sendClientRequest({
       type: "Add",
+      team_id: 0, // TODO: Allow user to select team
     });
   }
 

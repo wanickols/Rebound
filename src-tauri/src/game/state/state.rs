@@ -258,7 +258,7 @@ impl State {
         s
     }
 
-    pub fn new_player(x: f32, y: f32, angle: f32) -> Self {
+    pub fn new_player(team_id: u8, x: f32, y: f32, angle: f32) -> Self {
         let mut s = State::new();
         s.physics_state.pos = Vec2 { x, y };
         s.physics_state.angle = angle;
@@ -266,6 +266,7 @@ impl State {
         s.physics_state.mass = 100.0;
         s.physics_state.friction = 20.0;
         s.physics_state.restitution = 0.6;
+        s.team_id = Some(team_id);
         s.kind = Kind::Player;
         s.player_controller = Some(PlayerController::new(75.0, 400.0, s.entity_id));
         s

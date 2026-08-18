@@ -81,8 +81,8 @@ impl GameManager {
 
     pub fn handle_client_request(&mut self, request: ClientRequest, id: ClientId) {
         match request {
-            ClientRequest::Add => {
-                self.try_get_new_player(id);
+            ClientRequest::Add { team_id } => {
+                self.try_get_new_player(id, team_id);
             }
             ClientRequest::Remove { id } => {
                 self.remove_player(id);
@@ -128,8 +128,8 @@ impl GameManager {
         self.phase = GamePhase::Waiting;
     }
 
-    pub fn try_get_new_player(&mut self, client_id: ClientId) {
-        let id = self.spawn_manager.try_add_player(&mut self.world);
+    pub fn try_get_new_player(&mut self, client_id: ClientId, team_id: u8) {
+        let id = self.spawn_manager.try_add_player(&mut self.world, team_id);
         if let Some(new_id) = id {
             println!("Added new player with id {:?}", new_id);
 
